@@ -2,7 +2,7 @@ from typing import List,Dict,Any,Tuple
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from src.data_loader import load_all_documents
+# from src.data_loader import load_all_documents
 
 class EmbeddingPipeline:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", chunk_size: int = 1000, chunk_overlap: int = 200):
