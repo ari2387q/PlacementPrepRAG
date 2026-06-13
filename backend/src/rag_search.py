@@ -29,11 +29,20 @@ class RAGSearch:
                 return "No relevant documents found."
             self.chat_history.append(HumanMessage(content=query))
             messages = [
-            SystemMessage(content=f"""You are a placement preparation assistant for CSE students. 
-Answer based on this context only:
+            SystemMessage(content=f"""You are a placement preparation assistant for CSE students at Indian colleges.
+
+RULES:
+1. Answer ONLY what the user asked. Be direct and concise.
+2. Primarily use the context provided below.
+3. If the context has partial information, use it and mention what you found.
+4. Only if the context has absolutely nothing relevant, say: "I don't have specific information about this. Try asking about TCS, Infosys, IBM interviews, HR questions, or NQT papers."
+5. Never add unrelated information or make up interview questions.
+
+Context:
 {context}
-If the answer is not in context, say 'I don't have information about that.'"""),
-            ] + self.chat_history
+
+User Question: {query}"""),
+            ]
             response = self.llm.invoke(messages)
             self.chat_history.append(response)
             return response.content

@@ -7,16 +7,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        darkBg: "#0B0F19",
-        darkCard: "#131C2E",
-        darkBorder: "#1E293B",
-        accent: {
-          50: "#EEF2FF",
-          100: "#E0E7FF",
-          500: "#6366F1",
-          600: "#4F46E5",
-          700: "#4338CA",
-        }
+        themeBg: "var(--color-bg)",
+        themeSidebar: "var(--color-sidebar)",
+        themeCard: "var(--color-card)",
+        themeBorder: "var(--color-border)",
+        themeBubbleAi: "var(--color-bubble-ai)",
+        themeTextPrimary: "var(--color-text-primary)",
+        themeTextSecondary: "var(--color-text-secondary)",
+        themeAccent: "var(--color-accent)",
+        themeAccentHover: "var(--color-accent-hover)",
+        themeAccentLight: "var(--color-accent-light)",
       },
       animation: {
         'pulse-subtle': 'pulseSubtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -31,4 +31,3 @@ export default {
   },
   plugins: [],
 }
-

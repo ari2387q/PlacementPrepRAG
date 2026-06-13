@@ -4,10 +4,81 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Default Theme: Slate Dark */
+  --color-bg: #0B0F19;
+  --color-sidebar: #0E1524;
+  --color-card: #131C2E;
+  --color-border: #1E293B;
+  --color-bubble-ai: #161F30;
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #94A3B8;
+  --color-accent: #6366F1;
+  --color-accent-hover: #4F46E5;
+  --color-accent-light: rgba(99, 102, 241, 0.1);
+}
+
+/* Theme definitions */
+body.theme-slate {
+  --color-bg: #0B0F19;
+  --color-sidebar: #0E1524;
+  --color-card: #131C2E;
+  --color-border: #1E293B;
+  --color-bubble-ai: #161F30;
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #94A3B8;
+  --color-accent: #6366F1;
+  --color-accent-hover: #4F46E5;
+  --color-accent-light: rgba(99, 102, 241, 0.1);
+  color-scheme: dark;
+}
+
+body.theme-light {
+  --color-bg: #F8FAFC;
+  --color-sidebar: #FFFFFF;
+  --color-card: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-bubble-ai: #F1F5F9;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-accent: #4F46E5;
+  --color-accent-hover: #4338CA;
+  --color-accent-light: rgba(79, 70, 229, 0.1);
+  color-scheme: light;
+}
+
+body.theme-cyberpunk {
+  --color-bg: #0D021F;
+  --color-sidebar: #13042E;
+  --color-card: #1B0F33;
+  --color-border: #3A1B6B;
+  --color-bubble-ai: #1E0F38;
+  --color-text-primary: #FDF4FF;
+  --color-text-secondary: #C084FC;
+  --color-accent: #D946EF;
+  --color-accent-hover: #C026D3;
+  --color-accent-light: rgba(217, 70, 239, 0.15);
+  color-scheme: dark;
+}
+
+body.theme-emerald {
+  --color-bg: #061412;
+  --color-sidebar: #0B2420;
+  --color-card: #0F302B;
+  --color-border: #123C35;
+  --color-bubble-ai: #0E2E28;
+  --color-text-primary: #ECFDF5;
+  --color-text-secondary: #34D399;
+  --color-accent: #10B981;
+  --color-accent-hover: #059669;
+  --color-accent-light: rgba(16, 185, 129, 0.1);
+  color-scheme: dark;
+}
+
 @layer base {
   body {
     font-family: 'Inter', sans-serif;
-    @apply bg-[#0B0F19] text-slate-100 antialiased;
+    @apply transition-colors duration-300;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
@@ -25,10 +96,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
+  background: var(--color-border);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: var(--color-accent);
 }
