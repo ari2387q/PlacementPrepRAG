@@ -74,8 +74,10 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const clearHistory = () => {
-    if (window.confirm("Are you sure you want to clear your chat history?")) {
+  const clearHistory = async () => {
+    if (window.confirm("Are you sure you want to clear your chat history?"))
+      // Call backend to clear memory too
+          await fetch('http://localhost:8000/clear', { method: 'POST' }); {
       setMessages([
         {
           id: 'welcome',
