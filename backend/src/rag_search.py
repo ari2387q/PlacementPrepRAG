@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
-from src.vectorstore import FaissVectorStore
-from src.data_loader import load_all_documents
+from backend.src.vectorstore import FaissVectorStore
+from backend.src.data_loader import load_all_documents
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 

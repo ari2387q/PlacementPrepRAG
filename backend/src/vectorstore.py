@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 from typing import List, Any
 from sentence_transformers import SentenceTransformer
-from src.embedding import EmbeddingPipeline
+from backend.src.embedding import EmbeddingPipeline
 
 
 class FaissVectorStore:
