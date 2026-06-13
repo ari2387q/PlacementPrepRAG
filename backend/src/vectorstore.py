@@ -2,7 +2,7 @@ import os
 import numpy as np
 from typing import List, Any
 from sentence_transformers import SentenceTransformer
-from backend.src.embedding import EmbeddingPipeline
+from src.embedding import EmbeddingPipeline
 from pinecone import Pinecone, ServerlessSpec
 
 
