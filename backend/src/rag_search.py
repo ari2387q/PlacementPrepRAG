@@ -12,8 +12,11 @@ class RAGSearch:
         self.vectorstore = PineconeVectorStore(embedding_model)
         
         if self.vectorstore.is_empty():
-            docs = load_all_documents("data")
-            self.vectorstore.build_from_documents(docs)
+            empty = self.vectorstore.is_empty()
+            print(f"[DEBUG] Pinecone empty? {empty}")
+            if empty:
+             docs = load_all_documents("data")
+             self.vectorstore.build_from_documents(docs)
         else:
             print("[INFO] Pinecone index already has data, skipping build")
         

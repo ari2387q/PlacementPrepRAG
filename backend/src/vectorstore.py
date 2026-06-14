@@ -9,10 +9,14 @@ from pinecone import Pinecone, ServerlessSpec
 class PineconeVectorStore:
     def __init__(self, embedding_model: str = "all-MiniLM-L6-v2", chunk_size=1000, chunk_overlap=200):
         self.embedding_model = embedding_model
+        print("[DEBUG] About to load SentenceTransformer")
+
         self.model = SentenceTransformer(embedding_model)
+
+        print("[DEBUG] SentenceTransformer loaded successfully")
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-
+        print("[DEBUG] Initializing Pinecone")
         self.pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         self.index_name = os.getenv("PINECONE_INDEX", "placement-prep")
 
