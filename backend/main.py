@@ -12,11 +12,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-rag = RAGSearch()
+rag = None
 
 class QueryRequest(BaseModel):
     query: str
     top_k: int = 5
+
+@app.on_event("startup")
+async def startup_event():
+    global rag
+    rag = RAGSearch()
 
 @app.get("/")
 def health():
