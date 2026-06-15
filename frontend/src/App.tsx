@@ -139,7 +139,7 @@ function App() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/query', {
+      const response = await fetch('https://placementpreprag.onrender.com/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ function App() {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err: any) {
       console.error(err);
-      setError("Unable to connect to the backend server. Please verify that the local RAG API is running at http://localhost:8000");
+      setError("Unable to connect to the backend server.");
       
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
