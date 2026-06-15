@@ -1,9 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from src.rag_search import RAGSearch
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+rag = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global rag
+    from src.rag_search import RAGSearch
+    rag = RAGSearch()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,16 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-rag = None
-
 class QueryRequest(BaseModel):
     query: str
     top_k: int = 5
-
-@app.on_event("startup")
-async def startup_event():
-    global rag
-    rag = RAGSearch()
 
 @app.get("/")
 def health():
