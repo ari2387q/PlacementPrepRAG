@@ -20,7 +20,9 @@ class RAGSearch:
              self.vectorstore.build_from_documents(docs)
         else:
             print("[INFO] Pinecone index already has data, skipping build")
-        
+        # Load BM25 index from Pinecone chunks
+        self.vectorstore.load_bm25_from_pinecone()
+
         self.llm = ChatGroq(api_key=os.getenv("GROQ"), model_name=llm_model)
         self.chat_history = []
         print(f"[INFO] RAGSearch initialized with model: {llm_model}")
@@ -30,7 +32,7 @@ class RAGSearch:
         if query.lower().strip() in greetings:
             return {"answer": "Hey! 👋 I'm your placement prep assistant. Ask me about TCS, Infosys, IBM interviews, HR questions, or NQT papers!", "sources": []}
         
-        results = self.vectorstore.query(query, top_k=top_k)
+        results = self.vectorstore.hybrid_query(query, top_k=top_k)
         sources = list(set([
         os.path.basename(r["metadata"].get("source", "unknown"))
         for r in results if r["metadata"]
