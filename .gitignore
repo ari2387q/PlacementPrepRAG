@@ -11,7 +11,7 @@ wheels/
 .env
 faiss_store/
 data/
-
+.env.local
 # Logs
 logs
 *.log

@@ -15,7 +15,8 @@ class RAGSearch:
             empty = self.vectorstore.is_empty()
             print(f"[DEBUG] Pinecone empty? {empty}")
             if empty:
-             docs = load_all_documents("data")
+             print("CWD =", os.getcwd())
+             docs = load_all_documents("../data")
              self.vectorstore.build_from_documents(docs)
         else:
             print("[INFO] Pinecone index already has data, skipping build")
@@ -27,14 +28,18 @@ class RAGSearch:
     def search_and_summarize(self, query: str, top_k: int = 5) -> str:
         greetings = ["hi", "hello", "hey", "hii", "helo"]
         if query.lower().strip() in greetings:
-            return "Hey! 👋 I'm your placement prep assistant. Ask me about TCS, Infosys, IBM interviews, HR questions, or NQT papers!"
-
+            return {"answer": "Hey! 👋 I'm your placement prep assistant. Ask me about TCS, Infosys, IBM interviews, HR questions, or NQT papers!", "sources": []}
+        
         results = self.vectorstore.query(query, top_k=top_k)
+        sources = list(set([
+        os.path.basename(r["metadata"].get("source", "unknown"))
+        for r in results if r["metadata"]
+        ]))
         texts = [r["metadata"].get("text", "") for r in results if r["metadata"]]
         context = "\n\n".join(texts)
         
         if not context:
-            return "No relevant documents found."
+            return {"answer": "no relevant result found", "sources":[]}
         
         self.chat_history.append(HumanMessage(content=query))
         messages = [
@@ -55,7 +60,7 @@ User Question: {query}"""),
         
         response = self.llm.invoke(messages)
         self.chat_history.append(response)
-        return response.content
+        return {"answer": response.content, "sources": sources}
 
     def clear_history(self):
         self.chat_history = []

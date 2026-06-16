@@ -25,6 +25,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  sources?: any[];
 }
 
 const PRESET_PROMPTS = [
@@ -139,7 +140,7 @@ function App() {
     }
 
     try {
-      const response = await fetch('https://placementpreprag.onrender.com/query', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com'}/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,7 +161,8 @@ function App() {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.answer || "I couldn't fetch a valid answer. Please try again.",
-        timestamp: formatTimestamp()
+        timestamp: formatTimestamp(),
+        sources: data.sources || []
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -171,8 +173,9 @@ function App() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "⚠️ **Connection Error**: I failed to reach the RAG backend server at `http://localhost:8000/query`. Please make sure the backend is active.",
-        timestamp: formatTimestamp()
+        content: "⚠️ **Connection Error**.",
+        timestamp: formatTimestamp(),
+        sources: []
       }]);
     } finally {
       setIsLoading(false);
@@ -510,6 +513,17 @@ function App() {
                     }`}
                   >
                     {renderMessageContent(message.content, message.id)}
+                    
+                    {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 items-center text-[10px] text-themeTextSecondary border-t border-themeBorder/30 pt-2 select-none">
+                        <span className="font-semibold uppercase tracking-wider text-[9px]">Sources:</span>
+                        {message.sources.map((s, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-themeBg/40 border border-themeBorder/50 font-mono text-[9px] text-themeAccent" title={s}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <span className="text-[10px] text-themeTextSecondary px-1.5">
                     {message.timestamp}
@@ -530,7 +544,7 @@ function App() {
                       <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                       <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                       <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce"></div>
-                      <span className="text-xs text-themeTextSecondary/80 ml-2 select-none">Searching RAG database...</span>
+                      <span className="text-xs text-themeTextSecondary/80 ml-2 select-none">Searching...</span>
                     </div>
                   </div>
                 </div>
