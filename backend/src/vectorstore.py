@@ -161,30 +161,32 @@ class PineconeVectorStore:
     def hybrid_query(self, query_text: str, top_k: int = 5):
         print(f"[INFO] Hybrid querying for: '{query_text}'")
     
-    # Vector search — get top 15
+    #Vector search — get top 15
         query_emb = self.model.encode([query_text])[0].tolist()
         vector_results = self.index.query(
-            vector=query_emb, top_k=30, include_metadata=True
+            vector=query_emb, top_k=top_k*3, include_metadata=True
      )
         vector_ranked = [(match.id, match.score) for match in vector_results.matches]
         """for doc_id, score in vector_ranked[:10]:
             print(f"{doc_id}->{score}")"""
-    # BM25 search — get top 15
-        bm25_ranked = self.bm25.search(query_text, top_k=30)
+    #BM25 search — get top 15
+        bm25_ranked = self.bm25.search(query_text, top_k=top_k*3)
         """for doc_id, score in bm25_ranked[:10]:
             print(f"{doc_id} -> {score}")"""
-    # RRF fusion
+    
+    #rrf fusion
         fused = self.reciprocal_rank_fusion([vector_ranked, bm25_ranked])
         """for doc_id, score in fused[:10]:
             print(f"{doc_id} -> {score}")"""
-    # Fetch metadata for top results
-        top_ids = [doc_id for doc_id, _ in fused[:top_k]]
+    
+        top_ids = [doc_id for doc_id, _ in fused[:top_k*3]]
         fetch_results = self.index.fetch(ids=top_ids)
-        results = []
+        candidates = [] #added candidates instead of results 
         for i, doc_id in enumerate(top_ids):
             if doc_id in fetch_results.vectors:
                 metadata = fetch_results.vectors[doc_id].metadata
-                results.append({
+                #changed results to candidates here 
+                candidates.append({
                     "index": i,
                     "distance": fused[i][1],
                     "metadata": metadata
@@ -193,4 +195,45 @@ class PineconeVectorStore:
                 print("SOURCE :", metadata.get("source"))
                 print("TEXT   :", metadata.get("text", "")[:500])"""
 
-        return results
+        reranked = self.rerank(query_text, candidates, top_k=top_k)
+        print(f"[INFO] Reranked {len(candidates)} candidates to top {top_k}")
+        return reranked
+    
+    def rerank(self, query: str, candidates: list, top_k: int = 5):
+        query_words = set(query.lower().split())
+        stop_words = {"the", "a", "an", "is", "are", "was", "were", "what", "how",
+                  "why", "when", "where", "do", "does", "for", "of", "in", "to",
+                  "and", "or", "on", "at", "by", "it", "its", "this", "that",
+                  "with", "from", "be", "has", "have", "had", "not", "but"}
+        query_terms = query_words - stop_words
+
+        scored = []
+        for candidate in candidates:
+            chunk_text = candidate["metadata"].get("text", "").lower()
+            chunk_words = set(chunk_text.split())
+            initial_score = candidate["distance"]
+
+        # term overlap
+            term_overlap = len(query_terms & chunk_words)
+
+        # bigram matches
+            q_list = [w for w in query.lower().split() if w not in stop_words]
+            query_bigrams = set()
+            for i in range(len(q_list) - 1):
+                query_bigrams.add(q_list[i]+ " " +q_list[i+1])
+            bigram_matches = sum(1 for bg in query_bigrams if bg in chunk_text)
+
+        # position boost — query terms appearing early in chunk
+            position_boost = 0
+            for term in query_terms:
+                pos = chunk_text.find(term)
+                if pos != -1 and pos < len(chunk_text) // 3:
+                    position_boost += 0.5
+
+            rerank_score = (
+                term_overlap * 1.0 +bigram_matches* 2.0 + position_boost + initial_score * 5.0
+            )
+            scored.append((candidate, rerank_score))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [item[0] for item in scored[:top_k]]
