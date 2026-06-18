@@ -87,10 +87,8 @@ class PineconeVectorStore:
         print(f"[INFO] Connected to Pinecone index: {self.index_name}")
 
     def build_from_documents(self, documents: List[Any]):
-        #debugging
-        """print("DOCUMENT COUNT =", len(documents))
-        print("FIRST DOC =", documents[:1])"""
-    #building from vectorstore
+        print("DOCUMENT COUNT =", len(documents))
+        print("FIRST DOC =", documents[:1])
         print(f"[INFO] Building vector store from {len(documents)} documents...")
         emb_pipe = EmbeddingPipeline(model_name=self.embedding_model, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
         chunks = emb_pipe.chunk_documents(documents)
@@ -101,13 +99,20 @@ class PineconeVectorStore:
             source_path = chunk.metadata.get("source", "unknown")
             source_file = os.path.basename(source_path).lower()
 
+            company = "general"
 
+            if "tcs" in source_file:
+                company = "tcs"
+            elif "ibm" in source_file:
+                company = "ibm"
+            elif "infosys" in source_file:
+                company = "infosys"
             vectors.append({
                 "id": f"chunk-{i}",
                 "values": embedding.tolist(),
                 "metadata": {"text": chunk.page_content,
                              "source": source_path,
-                             }
+                             "company":company}
             })
 
         batch_size = 100

@@ -12,12 +12,11 @@ import {
   Terminal,
   BookOpen,
   MessageSquare,
-  BarChart2,
-  Award,
-  Zap,
   ChevronRight,
   HelpCircle,
-  FolderOpen
+  Plus,
+  FileText,
+  X
 } from 'lucide-react';
 
 interface Message {
@@ -44,9 +43,12 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>('slate');
+  const [uploadedFile, setUploadedFile] = useState<{ sessionId: string; filename: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load chat history & theme on mount
   useEffect(() => {
@@ -118,6 +120,66 @@ function App() {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setError("Only PDF files are supported.");
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
+      const response = await fetch(`${baseUrl}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setUploadedFile({
+        sessionId: data.session_id,
+        filename: data.filename,
+      });
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to upload file.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveFile = async () => {
+    if (!uploadedFile) return;
+    const sid = uploadedFile.sessionId;
+    setUploadedFile(null);
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
+      await fetch(`${baseUrl}/document/${sid}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error("Failed to delete document session from server", err);
+    }
+  };
+
   const handleSendMessage = async (textToSend: string) => {
     const trimmed = textToSend.trim();
     if (!trimmed) return;
@@ -140,15 +202,28 @@ function App() {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com'}/query`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
+      const url = uploadedFile 
+        ? `${baseUrl}/document/query`
+        : `${baseUrl}/query`;
+
+      const body = uploadedFile
+        ? {
+            session_id: uploadedFile.sessionId,
+            query: trimmed,
+            top_k: 5
+          }
+        : {
+            query: trimmed,
+            top_k: 5
+          };
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          query: trimmed,
-          top_k: 5
-        })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
@@ -298,70 +373,7 @@ function App() {
             </div>
           </div>
 
-          <hr className="border-themeBorder/50" />
 
-          {/* Stats Progress Widgets */}
-          <div className="space-y-4">
-            <h2 className="text-[10px] uppercase font-bold tracking-widest text-themeTextSecondary flex items-center gap-2">
-              <BarChart2 className="w-3.5 h-3.5 text-themeAccent" />
-              Preparation Progress
-            </h2>
-            
-            {/* Widget: Solved Quest */}
-            <div className="bg-themeCard border border-themeBorder/40 rounded-xl p-3.5 space-y-2.5 shadow-sm">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-themeTextSecondary font-medium">Interview Readiness</span>
-                <span className="font-bold text-themeAccent">84%</span>
-              </div>
-              <div className="w-full bg-themeBorder/40 h-2 rounded-full overflow-hidden">
-                <div className="bg-themeAccent h-full rounded-full transition-all duration-500" style={{ width: '84%' }} />
-              </div>
-              <div className="flex justify-between text-[10px] text-themeTextSecondary">
-                <span>15/20 Topics</span>
-                <span>Active Streak: 5d</span>
-              </div>
-            </div>
-
-            {/* Widget: Topics checklist */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-themeCard/50 border border-themeBorder/20">
-                <span className="flex items-center gap-2 text-themeTextSecondary">
-                  <Award className="w-3.5 h-3.5 text-emerald-500" />
-                  DSA Basics
-                </span>
-                <span className="text-[10px] font-bold text-emerald-500 uppercase px-1.5 py-0.5 rounded bg-emerald-500/10">Mastered</span>
-              </div>
-              <div className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-themeCard/50 border border-themeBorder/20">
-                <span className="flex items-center gap-2 text-themeTextSecondary">
-                  <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                  System Design
-                </span>
-                <span className="text-[10px] font-bold text-amber-500 uppercase px-1.5 py-0.5 rounded bg-amber-500/10">In Progress</span>
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-themeBorder/50" />
-
-          {/* Quick links */}
-          <div className="space-y-2.5">
-            <h2 className="text-[10px] uppercase font-bold tracking-widest text-themeTextSecondary flex items-center gap-2">
-              <FolderOpen className="w-3.5 h-3.5 text-themeAccent" />
-              Recent Subjects
-            </h2>
-            <div className="space-y-1">
-              {["Resume Check & HR Mock", "Top FAANG Coding Prep", "Database Tuning & SQL"].map((link, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendMessage(`Help me prepare for ${link}`)}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeCard transition-all text-left group"
-                >
-                  <span className="truncate">{link}</span>
-                  <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-themeAccent transition-all" />
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Lower Sidebar (Themes & Branding) */}
@@ -596,22 +608,60 @@ function App() {
 
             {/* Constrained Input Bar Form */}
             <form onSubmit={onSubmit} className="relative flex items-end gap-2.5">
-              <div className="relative flex-1 bg-themeCard border border-themeBorder focus-within:border-themeAccent/80 focus-within:ring-2 focus-within:ring-themeAccent/15 rounded-2xl transition-all duration-150 overflow-hidden flex items-end px-4 py-3">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={handleTextareaChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask a placement prep question or paste code..."
-                  rows={1}
-                  disabled={isLoading}
-                  className="w-full bg-transparent border-0 ring-0 focus:ring-0 outline-none resize-none text-sm text-themeTextPrimary placeholder-themeTextSecondary/60 py-0.5 max-h-[160px] min-h-[24px]"
-                />
+              <div className="relative flex-1 bg-themeCard border border-themeBorder focus-within:border-themeAccent/80 focus-within:ring-2 focus-within:ring-themeAccent/15 rounded-2xl transition-all duration-150 overflow-hidden flex flex-col px-4 py-3">
+                {uploadedFile && (
+                  <div className="flex items-center gap-2 mb-2 bg-themeBg/60 border border-themeBorder rounded-lg px-2.5 py-1.5 self-start text-xs text-themeTextSecondary transition-all duration-200 hover:border-themeAccent/40">
+                    <FileText className="w-4 h-4 text-themeAccent" />
+                    <span className="truncate max-w-[180px] font-medium">{uploadedFile.filename}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="hover:text-rose-500 transition-colors p-0.5 ml-1 rounded hover:bg-rose-500/10"
+                      title="Remove PDF"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                {isUploading && (
+                  <div className="flex items-center gap-2 mb-2 bg-themeBg/60 border border-themeBorder rounded-lg px-2.5 py-1.5 self-start text-xs text-themeTextSecondary">
+                    <RefreshCw className="w-4 h-4 animate-spin text-themeAccent" />
+                    <span className="animate-pulse">Uploading and embedding PDF...</span>
+                  </div>
+                )}
+                <div className="flex items-end gap-2 w-full">
+                  <button
+                    type="button"
+                    disabled={isUploading || isLoading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-shrink-0 w-8 h-8 rounded-lg bg-themeBg border border-themeBorder hover:border-themeAccent/50 text-themeTextSecondary hover:text-themeTextPrimary flex items-center justify-center transition-colors mb-0.5"
+                    title="Upload PDF document"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".pdf"
+                    className="hidden"
+                  />
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={handleTextareaChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder={uploadedFile ? `Ask a question about ${uploadedFile.filename}...` : "Ask a placement prep question or paste code..."}
+                    rows={1}
+                    disabled={isLoading}
+                    className="w-full bg-transparent border-0 ring-0 focus:ring-0 outline-none resize-none text-sm text-themeTextPrimary placeholder-themeTextSecondary/60 py-0.5 max-h-[160px] min-h-[24px]"
+                  />
+                </div>
               </div>
               
               <button
                 type="submit"
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || isUploading || !input.trim()}
                 className="flex-shrink-0 w-12 h-12 rounded-2xl bg-themeAccent hover:bg-themeAccentHover disabled:bg-themeCard disabled:text-themeTextSecondary/40 disabled:border-themeBorder/50 text-white flex items-center justify-center shadow-lg shadow-themeAccent/10 hover:shadow-themeAccent/25 border border-themeAccent/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-100"
               >
                 {isLoading ? (

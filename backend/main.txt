@@ -1,21 +1,21 @@
-import os
-from fastapi import FastAPI,UploadFile,File
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 import tempfile
 import uuid
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import SystemMessage
+
 from src.embedding import EmbeddingPipeline
 from src.temp_vectorstore import TempDocStore
 
+rag = None
+document_sessions: dict = {}  # session_id -> {"store": TempDocStore, "created_at": datetime, "filename": str}
+SESSION_TTL = timedelta(hours=2)
 
-rag=None
-document_sessions: dict={}
-SESSION_TTL=timedelta(hours=2)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
     from src.rag_search import RAGSearch
     rag = RAGSearch()
     yield
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -32,87 +33,87 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-#for session storage expiration clearage
+
+
 def cleanup_expired_sessions():
-    now=datetime.utcnow()
-    expired=[sid for sid,data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
+    now = datetime.utcnow()
+    expired = [sid for sid, data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
     for sid in expired:
         del document_sessions[sid]
 
+
 class QueryRequest(BaseModel):
-    query:str
-    top_k: int=5
-#a new class
+    query: str
+    top_k: int = 5
+
+
 class DocumentQueryRequest(BaseModel):
     session_id: str
     query: str
     top_k: int = 5
-#below 3 functions remain same
+
+
 @app.get("/")
 def health():
     return {"status": "ok"}
 
+
 @app.post("/query")
 def query(request: QueryRequest):
     results = rag.search_and_summarize(request.query, request.top_k)
-    return {"answer": results["answer"],"sources": results["sources"]}
+    return {"answer": results["answer"], "sources": results["sources"]}
+
 
 @app.post("/clear")
 def clear_history():
     rag.clear_history()
     return {"status": "history cleared"}
 
+
 @app.post("/upload")
-async def upload_pdf(file:UploadFile=File(...)):
-    #important forsession storage 
+async def upload_pdf(file: UploadFile = File(...)):
     cleanup_expired_sessions()
 
     if not file.filename.lower().endswith(".pdf"):
-        return {"error":"Only pdf filesare supported right now"}
-     # write to temp file manually without delete=True
-    tmp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.pdf")
-    try:
-        with open(tmp_path, "wb") as f:
-            f.write(await file.read())
-        
-        documents = PyPDFLoader(tmp_path).load()
-    finally:
-        # always delete after loading
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        return {"error": "Only PDF files are supported right now."}
+
+    with tempfile.NamedTemporaryFile(delete=True, suffix=".pdf") as temp_file:
+        temp_file.write(await file.read())
+        temp_file.flush()
+
+        documents = PyPDFLoader(temp_file.name).load()
 
     if not documents:
-        return {"error":"couldnt extract any text from this pdf"}
-    
+        return {"error": "Couldn't extract any text from this PDF."}
+
     for doc in documents:
-        doc.metadata["source"]=file.filename
+        doc.metadata["source"] = file.filename
 
-    emb_pipe=EmbeddingPipeline(model=rag.vectorstore.model,chunk_size=1000,chunk_overlap=200)
-    chunks=emb_pipe.chunk_documents(documents)
-    embeddings=emb_pipe.embed_chunks(chunks)
+    emb_pipe = EmbeddingPipeline(model=rag.vectorstore.model, chunk_size=1000, chunk_overlap=200)
+    chunks = emb_pipe.chunk_documents(documents)
+    embeddings = emb_pipe.embed_chunks(chunks)
 
-    store=TempDocStore()
-    store.build(chunks,embeddings)
+    store = TempDocStore()
+    store.build(chunks, embeddings)
 
-    session_id=str(uuid.uuid4())
-    document_sessions[session_id]= {
-        "store":store,
-        "created_at":datetime.utcnow(),
-        "filename":file.filename,
+    session_id = str(uuid.uuid4())
+    document_sessions[session_id] = {
+        "store": store,
+        "created_at": datetime.utcnow(),
+        "filename": file.filename,
     }
 
-
-    return{"session_id":session_id,"filename":file.filename,"chunks":len(chunks)}
+    return {"session_id": session_id, "filename": file.filename, "chunks": len(chunks)}
 
 
 @app.post("/document/query")
-def query_document(request:DocumentQueryRequest):
-    session=document_sessions.get(request.session_id)
+def query_document(request: DocumentQueryRequest):
+    session = document_sessions.get(request.session_id)
     if not session:
-        return{"error":"session not dounf or expired"}
-    
-    store:TempDocStore=session["store"]
-    query_embedding=rag.vectorstore.model.encode([request.query])[0]
+        return {"error": "Session not found or expired. Please re-upload your document."}
+
+    store: TempDocStore = session["store"]
+    query_embedding = rag.vectorstore.model.encode([request.query])[0]
 
     results = store.hybrid_query(request.query, query_embedding, top_k=request.top_k)
     context = "\n\n".join(r["metadata"]["text"] for r in results)
@@ -131,8 +132,8 @@ User Question: {request.query}"""),
     response = rag.llm.invoke(messages)
     return {"answer": response.content, "sources": [session["filename"]]}
 
-@app.delete("/document/{session_id}")
-def delete_document_session(session_id:str):
-    document_sessions.pop(session_id,None)
-    return {"status":"session cleared"}
 
+@app.delete("/document/{session_id}")
+def delete_document_session(session_id: str):
+    document_sessions.pop(session_id, None)
+    return {"status": "session cleared"}
