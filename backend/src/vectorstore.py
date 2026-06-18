@@ -96,11 +96,23 @@ class PineconeVectorStore:
 
         vectors = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            source_path = chunk.metadata.get("source", "unknown")
+            source_file = os.path.basename(source_path).lower()
+
+            company = "general"
+
+            if "tcs" in source_file:
+                company = "tcs"
+            elif "ibm" in source_file:
+                company = "ibm"
+            elif "infosys" in source_file:
+                company = "infosys"
             vectors.append({
                 "id": f"chunk-{i}",
                 "values": embedding.tolist(),
                 "metadata": {"text": chunk.page_content,
-                             "source": chunk.metadata.get("source", "unknown")}
+                             "source": source_path,
+                             "company":company}
             })
 
         batch_size = 100
@@ -160,22 +172,44 @@ class PineconeVectorStore:
 
     def hybrid_query(self, query_text: str, top_k: int = 5):
         print(f"[INFO] Hybrid querying for: '{query_text}'")
-    
-    #Vector search — get top 15
+        # detect company from query
+        query_lower = query_text.lower()
+        filter_dict = None
+        if "tcs" in query_lower:
+            filter_dict = {"company": {"$eq": "tcs"}}
+        elif "ibm" in query_lower:
+            filter_dict = {"company": {"$eq": "ibm"}}
+        elif "infosys" in query_lower:
+            filter_dict = {"company": {"$eq": "infosys"}}
+
+    #Vector search: top 15
         query_emb = self.model.encode([query_text])[0].tolist()
         vector_results = self.index.query(
-            vector=query_emb, top_k=top_k*3, include_metadata=True
+            vector=query_emb, top_k=top_k*3, include_metadata=True,filter=filter_dict
      )
         vector_ranked = [(match.id, match.score) for match in vector_results.matches]
         """for doc_id, score in vector_ranked[:10]:
             print(f"{doc_id}->{score}")"""
-    #BM25 search — get top 15
+    #BM25 search :top 15
         bm25_ranked = self.bm25.search(query_text, top_k=top_k*3)
+
         """for doc_id, score in bm25_ranked[:10]:
             print(f"{doc_id} -> {score}")"""
-    
+        
+        if filter_dict and "source" in filter_dict:
+            company = filter_dict["company"]["$eq"]
+    #fetch metadata for bm25 results to check source
+            bm25_ids = [doc_id for doc_id, _ in bm25_ranked]
+            if bm25_ids:
+                fetched = self.index.fetch(ids=bm25_ids)
+                bm25_ranked = [
+                    (doc_id, score) for doc_id, score in bm25_ranked
+                    if doc_id in fetched.vectors and 
+                    fetched.vectors[doc_id].metadata.get("company") == company
+                ]
     #rrf fusion
         fused = self.reciprocal_rank_fusion([vector_ranked, bm25_ranked])
+
         """for doc_id, score in fused[:10]:
             print(f"{doc_id} -> {score}")"""
     
