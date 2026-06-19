@@ -1,6 +1,10 @@
 import numpy as np
 from src.vectorstore import BM25
-
+import os
+import tempfile
+import uuid
+from langchain_community.document_loaders import PyPDFLoader
+from src.embedding import EmbeddingPipeline
 
 class TempDocStore:
     """In-memory store for a single uploaded document. No Pinecone, no persistence."""
@@ -94,3 +98,27 @@ class TempDocStore:
 
         scored.sort(key=lambda x: x[1], reverse=True)
         return [item[0] for item in scored[:top_k]]
+    
+    async def build_from_file(self, file, embedding_model):
+    # save uploaded file temporarily
+        tmp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.pdf")
+        try:
+            with open(tmp_path, "wb") as f:
+                f.write(await file.read())
+            documents = PyPDFLoader(tmp_path).load()
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        if not documents:
+            return 0
+
+        for doc in documents:
+            doc.metadata["source"] = file.filename
+
+        emb_pipe = EmbeddingPipeline(model=embedding_model)
+        chunks = emb_pipe.chunk_documents(documents)
+        embeddings = emb_pipe.embed_chunks(chunks)
+
+        self.build(chunks, embeddings)
+        return len(chunks)

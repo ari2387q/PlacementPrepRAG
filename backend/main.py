@@ -6,10 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime,timedelta
 import tempfile
 import uuid
-
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import SystemMessage
-from src.embedding import EmbeddingPipeline
 from src.temp_vectorstore import TempDocStore
 
 
@@ -38,7 +35,7 @@ def cleanup_expired_sessions():
     expired=[sid for sid,data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
     for sid in expired:
         del document_sessions[sid]
-
+#for pinecone (v1)
 class QueryRequest(BaseModel):
     query:str
     top_k: int=5
@@ -51,7 +48,7 @@ class DocumentQueryRequest(BaseModel):
 @app.get("/")
 def health():
     return {"status": "ok"}
-
+#for the pinecone (v1)
 @app.post("/query")
 def query(request: QueryRequest):
     results = rag.search_and_summarize(request.query, request.top_k)
@@ -63,48 +60,26 @@ def clear_history():
     return {"status": "history cleared"}
 
 @app.post("/upload")
-async def upload_pdf(file:UploadFile=File(...)):
-    #important forsession storage 
+async def upload_pdf(file: UploadFile = File(...)):
     cleanup_expired_sessions()
 
     if not file.filename.lower().endswith(".pdf"):
-        return {"error":"Only pdf filesare supported right now"}
-     # write to temp file manually without delete=True
-    tmp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.pdf")
-    try:
-        with open(tmp_path, "wb") as f:
-            f.write(await file.read())
-        
-        documents = PyPDFLoader(tmp_path).load()
-    finally:
-        # always delete after loading
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        return {"error": "Only PDF files are supported"}
 
-    if not documents:
-        return {"error":"couldnt extract any text from this pdf"}
-    
-    for doc in documents:
-        doc.metadata["source"]=file.filename
+    store = TempDocStore()
+    chunk_count = await store.build_from_file(file, rag.vectorstore.model)
 
-    emb_pipe=EmbeddingPipeline(model=rag.vectorstore.model,chunk_size=1000,chunk_overlap=200)
-    chunks=emb_pipe.chunk_documents(documents)
-    embeddings=emb_pipe.embed_chunks(chunks)
+    if chunk_count == 0:
+        return {"error": "Couldn't extract any text from this PDF"}
 
-    store=TempDocStore()
-    store.build(chunks,embeddings)
-
-    session_id=str(uuid.uuid4())
-    document_sessions[session_id]= {
-        "store":store,
-        "created_at":datetime.utcnow(),
-        "filename":file.filename,
+    session_id = str(uuid.uuid4())
+    document_sessions[session_id] = {
+        "store": store,
+        "created_at": datetime.utcnow(),
+        "filename": file.filename,
     }
 
-
-    return{"session_id":session_id,"filename":file.filename,"chunks":len(chunks)}
-
-
+    return {"session_id": session_id, "filename": file.filename, "chunks": chunk_count}
 @app.post("/document/query")
 def query_document(request:DocumentQueryRequest):
     session=document_sessions.get(request.session_id)
@@ -121,7 +96,12 @@ def query_document(request:DocumentQueryRequest):
         return {"answer": "I couldn't find relevant content in this document for that question.", "sources": []}
 
     messages = [
-        SystemMessage(content=f"""You are a document Q&A assistant. Answer the user's question using ONLY the context below, taken from their uploaded file "{session['filename']}". If the answer isn't in the context, say you couldn't find it in the document. Don't use outside knowledge.
+        SystemMessage(content=f"""You are a document Q&A 
+                      assistant. Answer the user's question using ONLY the context below, taken from 
+                      their uploaded file "{session['filename']}". If 
+                      the answer isn't in the context, 
+                      say you couldn't find it in the document. 
+                      Don't use outside knowledge.
 
 Context:
 {context}

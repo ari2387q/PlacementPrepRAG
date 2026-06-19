@@ -11,8 +11,6 @@ class EmbeddingPipeline:
         self.model = model if model is not None else SentenceTransformer(model_name)
         if model is None:
             print(f"[INFO] Loaded embedding model: {model_name}")
-            
-
     def chunk_documents(self, documents: List[Any]) -> List[Any]:
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
