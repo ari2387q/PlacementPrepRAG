@@ -13,10 +13,8 @@
 
 ## What is PlacementPrep AI?
 
-PlacementPrep AI is an intelligent placement preparation assistant built for CSE students targeting campus placements at companies like TCS, Infosys, and IBM. It uses **Retrieval-Augmented Generation (RAG)** to answer questions strictly from real interview experiences, NQT papers, and HR question banks — not hallucinated content.
-
-Users can also **upload their own PDFs** (company-specific notes, study material, interview experiences) and query them in real-time using the same hybrid search pipeline.
-
+PlacementPrep AI is an intelligent placement preparation assistant built for CSE students targeting placement can **upload their own PDFs** (company-specific notes, study material, interview experiences) and query them in real-time using the same hybrid search pipeline. It uses **Retrieval-Augmented Generation (RAG)** to answer questions strictly from real interview experiences, NQT papers, and HR question banks uploaded— not hallucinated content.
+A pinecone-indexed retrieval v1 of this project also exists, wherein data from certain companies are used for understanding and developing architectural know-how of this project.
 ---
 
 ## Features
