@@ -223,7 +223,7 @@ Pure vector search misses exact keyword matches. Searching "TCS NQT" might not r
 FAISS stores the index locally — can't deploy without committing binary files to GitHub. Pinecone is cloud-native, persists across deployments, and scales without infrastructure changes.
 
 **Why two vector stores (Pinecone + TempDocStore)?**
-Permanent curated data (company interviews, NQT papers) belongs in Pinecone — persists forever, always available. User-uploaded PDFs are temporary — storing them in Pinecone would pollute the index and cost money. TempDocStore uses RAM with a 2-hour TTL, keeping separation clean.
+Permanent curated data (company interviews, NQT papers) belongs in Pinecone — persists forever, always available. User-uploaded PDFs are temporary — storing them in Pinecone would pollute the index and cost money. TempDocStore uses RAM with a 2-hour TTL, keeping separation clean.  These both were necessary for me to learn how the architecture work firsthand and later see how it works when un-feeded file content reaches the RAG system
 
 **Why a custom reranker over a cross-encoder?**
 Cross-encoders (like `ms-marco-MiniLM`) add another 80MB model and significant latency. For 230 chunks, a custom scorer using term overlap + bigram matching + position boosting gives sufficient improvement without the memory overhead — critical for Render's 512MB RAM limit.
@@ -286,12 +286,11 @@ Frontend runs at `http://localhost:5173`
 
 ## Known Limitations
 
-- No authentication — API is publicly accessible
 - No file size limit on uploads — large PDFs could exhaust RAM
 - Session data lost on server restart (in-memory storage)
 - Render free tier has 512MB RAM limit — cold starts take 30-60 seconds
-- Only English PDF text extraction supported (no OCR for scanned PDFs)
-- Company metadata filter only covers TCS, Infosys, IBM currently
+- No authentication — API is publicly accessible
+
 
 ---
 
