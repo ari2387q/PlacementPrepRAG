@@ -44,7 +44,7 @@ class TempDocStore:
         bm25_ranked = self.bm25.search(query_text, top_k=top_k * 3)
 
         fused = self._reciprocal_rank_fusion([vector_ranked, bm25_ranked])
-        top_ids = [doc_id for doc_id, _ in fused[:top_k * 3]]
+        top_ids = [doc_id for doc_id, _ in fused[:top_k * 10]]
 
         candidates = []
         for i, doc_id in enumerate(top_ids):
