@@ -8,7 +8,7 @@ import tempfile
 import uuid
 from langchain_core.messages import SystemMessage
 from src.temp_vectorstore import TempDocStore
-
+from src.eval import evaluate_rag_resp
 
 rag=None
 document_sessions: dict={}
@@ -109,8 +109,24 @@ Context:
 User Question: {request.query}"""),
     ]
     response = rag.llm.invoke(messages)
-    return {"answer": response.content, "sources": [session["filename"]]}
+    answer = response.content
 
+    contexts = [
+    r["metadata"]["text"]
+    for r in results
+    ]
+
+    scores = evaluate_rag_resp(
+        question=request.query,
+        answer=answer,
+        contexts=contexts,
+    )
+
+    return {
+        "answer": answer,
+        "sources": [session["filename"]],
+        "eval_scores": scores
+    }
 @app.delete("/document/{session_id}")
 def delete_document_session(session_id:str):
     document_sessions.pop(session_id,None)
