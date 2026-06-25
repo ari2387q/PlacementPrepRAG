@@ -3,13 +3,13 @@ from dotenv import load_dotenv
 from src.data_loader import load_all_documents
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
-
+from src.vectorstore import PineconeVectorStore
 load_dotenv()
 
 class RAGSearch:
     def __init__(self, embedding_model: str = "all-MiniLM-L6-v2", llm_model: str = "llama-3.1-8b-instant"):
-        """self.vectorstore = PineconeVectorStore(embedding_model)"""
-        """
+        self.vectorstore = PineconeVectorStore(embedding_model)
+        
         if self.vectorstore.is_empty():
             empty = self.vectorstore.is_empty()
             print(f"[DEBUG] Pinecone empty? {empty}")
@@ -21,7 +21,7 @@ class RAGSearch:
             print("[INFO] Pinecone index already has data, skipping build")
         # Load BM25 index from Pinecone chunks
         self.vectorstore.load_bm25_from_pinecone()
-        """
+        
         self.llm = ChatGroq(api_key=os.getenv("GROQ"), model_name=llm_model)
         self.chat_history = []
         print(f"[INFO] RAGSearch initialized with model: {llm_model}")
