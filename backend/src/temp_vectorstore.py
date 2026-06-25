@@ -102,10 +102,11 @@ class TempDocStore:
     async def build_from_file(self, file, embedding_model):
     # save uploaded file temporarily
         tmp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.pdf")
+        import asyncio
         try:
             with open(tmp_path, "wb") as f:
                 f.write(await file.read())
-            documents = PyPDFLoader(tmp_path).load()
+            documents = await asyncio.to_thread(PyPDFLoader(tmp_path).load)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
@@ -117,8 +118,8 @@ class TempDocStore:
             doc.metadata["source"] = file.filename
 
         emb_pipe = EmbeddingPipeline(model=embedding_model)
-        chunks = emb_pipe.chunk_documents(documents)
-        embeddings = emb_pipe.embed_chunks(chunks)
+        chunks = await asyncio.to_thread(emb_pipe.chunk_documents, documents)
+        embeddings = await asyncio.to_thread(emb_pipe.embed_chunks, chunks)
 
         self.build(chunks, embeddings)
         return len(chunks)
