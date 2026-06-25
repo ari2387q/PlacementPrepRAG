@@ -29,7 +29,8 @@ def answer_relevance(question, answer):
     a_tokens = set(tokenize(answer))
     if not q_tokens or not a_tokens:
         return 0.0
-    return len(q_tokens & a_tokens) / len(q_tokens | a_tokens)
+    overlap = len(q_tokens & a_tokens)
+    return round(overlap / len(q_tokens), 2)
 
 def evaluate_rag_resp(question: str, answer: str, contexts: list[str]) -> dict:
     """
