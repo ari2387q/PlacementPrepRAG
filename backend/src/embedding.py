@@ -27,6 +27,8 @@ class EmbeddingPipeline:
         print(f"[INFO] Generating embeddings for {len(texts)} chunks...")
         import torch
         torch.set_num_threads(1)
-        embeddings = self.model.encode(texts, show_progress_bar=True, batch_size=8)
+        import gc
+        gc.collect()
+        embeddings = self.model.encode(texts, show_progress_bar=False, batch_size=4)
         print(f"[INFO] Embeddings shape: {embeddings.shape}")
         return embeddings
