@@ -69,7 +69,7 @@ function App() {
         {
           id: 'welcome',
           role: 'assistant',
-          content: "Welcome to **PlacementPrep AI**! 🚀\n\nI am your placement preparation assistant powered by RAG (Retrieval-Augmented Generation). Ask me anything about:\n- Data Structures & Algorithms (DSA)\n- System Design & Databases\n- Mock Interview Questions\n- Resume Review & Behavioral Prep\n\nHow can I help you ace your interviews today?",
+          content:"Welcome to **PlacementPrep AI**! \n\nI am your placement preparation assistant powered by RAG (Retrieval-Augmented Generation). I have data on:\n- TCS, Infosys, IBM interview experiences\n- TCS NQT previous year papers\n- HR questions for campus placements\n\nYou can also upload your own PDF and ask questions about it!\n\nHow can I help you prepare today?",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);

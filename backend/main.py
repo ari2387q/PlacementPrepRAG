@@ -3,7 +3,7 @@ from fastapi import FastAPI,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta,timezone
 import tempfile
 import uuid
 from langchain_core.messages import SystemMessage
@@ -31,7 +31,7 @@ app.add_middleware(
 )
 #for session storage expiration clearage
 def cleanup_expired_sessions():
-    now=datetime.utcnow()
+    now=datetime.now(timezone.utc)
     expired=[sid for sid,data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
     for sid in expired:
         del document_sessions[sid]
@@ -39,7 +39,7 @@ def cleanup_expired_sessions():
 class QueryRequest(BaseModel):
     query:str
     top_k: int=5
-#a new class
+#a new classa
 class DocumentQueryRequest(BaseModel):
     session_id: str
     query: str
@@ -75,7 +75,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     session_id = str(uuid.uuid4())
     document_sessions[session_id] = {
         "store": store,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "filename": file.filename,
     }
 
