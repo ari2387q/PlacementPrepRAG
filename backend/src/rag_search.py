@@ -21,7 +21,7 @@ class RAGSearch:
         # else:
         #     print("[INFO] Pinecone index already has data, skipping build")
         # Load BM25 index from Pinecone chunks
-        # self.vectorstore.load_bm25_from_pinecone()
+        self.vectorstore.load_bm25_from_pinecone()
         
         self.llm = ChatGroq(api_key=os.getenv("GROQ"), model_name=llm_model)
         self.chat_history = []
