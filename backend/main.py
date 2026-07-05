@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI,UploadFile,File
+from fastapi import FastAPI,UploadFile,File,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -8,10 +8,11 @@ import tempfile
 import uuid
 from langchain_core.messages import SystemMessage
 from src.temp_vectorstore import TempDocStore
-from src.eval import evaluate_rag_resp
+
 
 rag=None
 document_sessions: dict={}
+document_chat_histories: dict = {}
 SESSION_TTL=timedelta(hours=2)
 
 @asynccontextmanager
@@ -81,54 +82,22 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     return {"session_id": session_id, "filename": file.filename, "chunks": chunk_count}
 @app.post("/document/query")
-def query_document(request:DocumentQueryRequest):
-    session=document_sessions.get(request.session_id)
+def query_document(request: DocumentQueryRequest):
+    session = document_sessions.get(request.session_id)
     if not session:
-        return{"error":"session not dounf or expired"}
-    
-    store:TempDocStore=session["store"]
-    query_embedding=rag.vectorstore.model.encode([request.query])[0]
+        raise HTTPException(status_code=404, detail="Session not found or expired")
 
-    results = store.hybrid_query(request.query, query_embedding, top_k=request.top_k)
-    context = "\n\n".join(r["metadata"]["text"] for r in results)
-
-    if not context:
-        return {"answer": "I couldn't find relevant content in this document for that question.", "sources": []}
-
-    messages = [
-        SystemMessage(content=f"""You are a document Q&A 
-                      assistant. Answer the user's question using ONLY the context below, taken from 
-                      their uploaded file "{session['filename']}". If 
-                      the answer isn't in the context, 
-                      say you couldn't find it in the document. 
-                      Don't use outside knowledge.
-
-Context:
-{context}
-
-User Question: {request.query}"""),
-    ]
-    response = rag.llm.invoke(messages)
-    answer = response.content
-
-    contexts = [
-    r["metadata"]["text"]
-    for r in results
-    ]
-
-    scores = evaluate_rag_resp(
-        question=request.query,
-        answer=answer,
-        contexts=contexts,
+    result = rag.search_document(
+        query=request.query,
+        store=session["store"],
+        filename=session["filename"],
+        session_id=request.session_id,
+        top_k=request.top_k
     )
-
-    return {
-        "answer": answer,
-        "sources": [session["filename"]],
-        "eval_scores": scores
-    }
+    return result
 @app.delete("/document/{session_id}")
 def delete_document_session(session_id:str):
     document_sessions.pop(session_id,None)
+    rag.clear_document_history(session_id)
     return {"status":"session cleared"}
 

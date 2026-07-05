@@ -24,7 +24,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  sources?: any[];
+  sources?: string[];
 }
 
 const PRESET_PROMPTS = [

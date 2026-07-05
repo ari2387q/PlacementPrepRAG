@@ -4,6 +4,7 @@ from src.data_loader import load_all_documents
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from src.vectorstore import PineconeVectorStore
+from src.eval import evaluate_rag_resp
 load_dotenv()
 
 class RAGSearch:
@@ -69,3 +70,64 @@ User Question: {query}"""),
     def clear_history(self):
         self.chat_history = []
         print("[INFO] Chat history cleared.")
+
+
+
+    def search_document(self, query: str, store, filename: str, session_id: str, top_k: int = 5) -> dict:
+    # get or create chat history for this session
+        if not hasattr(self, 'document_histories'):
+            self.document_histories = {}
+    
+        if session_id not in self.document_histories:
+            self.document_histories[session_id] = []
+    
+        chat_history = self.document_histories[session_id]
+
+    # get query embedding
+        query_embedding = self.vectorstore.model.encode([query])[0]
+
+    # hybrid search on uploaded PDF
+        results = store.hybrid_query(query, query_embedding, top_k=top_k)
+        context = "\n\n".join(r["metadata"]["text"] for r in results)
+
+        if not context:
+            return {
+            "answer": "I couldn't find relevant content in this document.",
+            "sources": [],
+            "eval_scores": {"faithfulness": 0.0, "answer_relevance": 0.0}
+        }
+
+    # build messages with history
+        chat_history.append(HumanMessage(content=query))
+        chat_history = chat_history[-6:]
+
+        messages = [
+        SystemMessage(content=f"""You are a document Q&A assistant. Answer the user's question using ONLY the context below, taken from their uploaded file "{filename}". If the answer isn't in the context, say you couldn't find it in the document. Don't use outside knowledge.
+
+    Context:
+    {context}
+
+    User Question: {query}"""),
+    ] + chat_history
+
+        response = self.llm.invoke(messages)
+        chat_history.append(response)
+        self.document_histories[session_id] = chat_history
+
+    # eval
+        contexts = [r["metadata"]["text"] for r in results]
+        scores = evaluate_rag_resp(
+        question=query,
+        answer=response.content,
+        contexts=contexts,
+    )
+
+        return {
+        "answer": response.content,
+        "sources": [filename],
+        "eval_scores": scores
+    }
+
+    def clear_document_history(self, session_id: str):
+        if hasattr(self, 'document_histories'):
+            self.document_histories.pop(session_id, None)
