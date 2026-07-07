@@ -7,7 +7,7 @@ def tokenize(text):
     return [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in STOP]
 
 def split_sentences(text):
-    return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()].
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
 def faithfulness(answer, context):
     context_set = set(tokenize(context))
     claims = split_sentences(answer)
