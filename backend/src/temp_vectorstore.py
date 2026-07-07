@@ -100,13 +100,23 @@ class TempDocStore:
         return [item[0] for item in scored[:top_k]]
     
     async def build_from_file(self, file, embedding_model):
-    # save uploaded file temporarily
-        tmp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.pdf")
         import asyncio
+        import time
+
+        tmp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.pdf")
         try:
+            print("[DEBUG] Writing file to disk...")
+            t = time.time()
             with open(tmp_path, "wb") as f:
                 f.write(await file.read())
-            documents = await asyncio.to_thread(PyPDFLoader(tmp_path).load)
+            print(f"[DEBUG] File written in {time.time()-t:.2f}s")
+
+            print("[DEBUG] Loading PDF...")
+            t = time.time()
+            loader = PyPDFLoader(tmp_path)
+            documents = await asyncio.to_thread(loader.load)
+            print(f"[DEBUG] PDF loaded {len(documents)} pages in {time.time()-t:.2f}s")
+
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
@@ -117,9 +127,16 @@ class TempDocStore:
         for doc in documents:
             doc.metadata["source"] = file.filename
 
+        print("[DEBUG] Chunking...")
+        t = time.time()
         emb_pipe = EmbeddingPipeline(model=embedding_model)
         chunks = await asyncio.to_thread(emb_pipe.chunk_documents, documents)
+        print(f"[DEBUG] Chunked into {len(chunks)} chunks in {time.time()-t:.2f}s")
+
+        print("[DEBUG] Embedding...")
+        t = time.time()
         embeddings = await asyncio.to_thread(emb_pipe.embed_chunks, chunks)
+        print(f"[DEBUG] Embedded in {time.time()-t:.2f}s")
 
         self.build(chunks, embeddings)
         return len(chunks)
