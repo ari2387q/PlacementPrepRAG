@@ -1,0 +1,17 @@
+Placement prep rag
+
+The main idea of thisproejct is to learn and understand the fundamentalsof Automation and Rag implementation of LLMs
+
+The intake starts from the upload/ endpoint of the main.py file
+here what happens is that the uploaded file is cheked if its ending iwth the .pdf exetnsion using filenmae lowercase function if so then itcontnues or it gives error.
+the build from file function is used fromtempvectrostore
+,it also opens a tmp path which create sa new session id for it and then writes the file contnet onto it, the pdf is loaded, which basically does the chunk counts first, adn usesth embedding pipleine from embedding.py to chunk and mbed the chunks into vectors.
+using the embedding model mentioned in the embedding.py file with max 1000 tokens
+
+
+async def build_from_file(self,file,embedding_model):
+    import asyncio
+    tmp_path=os.path.join(tempfile.gettempdir(),f"{uuid.uuid4()})
+    try:
+    
+        
