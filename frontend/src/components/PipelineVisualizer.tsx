@@ -14,95 +14,88 @@ interface PipelineVisualizerProps {
 }
 
 const DEFAULT_STAGES: PipelineStage[] = [
-  { step: 'Query Prep', detail: 'Tokenized terms & company metadata extracted', status: 'completed', durationMs: 12 },
-  { step: 'Pinecone Vector Search', detail: '384-dim SentenceTransformer embedding -> Cosine similarity top 15', status: 'completed', durationMs: 142 },
-  { step: 'BM25 Keyword Search', detail: 'Exact term frequency matching across document index top 15', status: 'completed', durationMs: 18 },
-  { step: 'Reciprocal Rank Fusion', detail: 'Merged ranked candidates with score formula 1 / (60 + rank)', status: 'completed', durationMs: 6 },
-  { step: '2-Stage Custom Reranker', detail: 'Bigram overlap + position boost rescoring -> Top 5 selected', status: 'completed', durationMs: 9 },
-  { step: 'Groq LLM Synthesizer', detail: 'llama-3.1-8b-instant grounded response generated', status: 'completed', durationMs: 410 },
+  { step: 'Query Prep', detail: 'Tokenize, normalize and route the question to the right retriever.', status: 'completed', durationMs: 12 },
+  { step: 'Pinecone Vector Search', detail: 'Embed query and perform cosine search over the vector index.', status: 'completed', durationMs: 142 },
+  { step: 'BM25 Keyword Search', detail: 'Exact-match sparse retrieval across indexed document chunks.', status: 'completed', durationMs: 18 },
+  { step: 'Reciprocal Rank Fusion', detail: 'Merge dense and sparse rankings into a single candidate list.', status: 'completed', durationMs: 6 },
+  { step: '2-Stage Custom Reranker', detail: 'Rescore top candidates with bigram overlap and position boosting.', status: 'completed', durationMs: 9 },
+  { step: 'Groq LLM Synthesizer', detail: 'Generate the final answer using grounded context and conversation history.', status: 'completed', durationMs: 410 },
 ];
 
-export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({ stages = DEFAULT_STAGES }) => {
+export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({ stages = DEFAULT_STAGES, queryText }) => {
   const [isOpen, setIsOpen] = useState(false);
-
   const totalDuration = stages.reduce((acc, s) => acc + s.durationMs, 0);
-
-  const STAGE_ICONS = [
-    Cpu,
-    Database,
-    Search,
-    GitMerge,
-    Sliders,
-    MessageSquare
-  ];
+  const STAGE_ICONS = [Cpu, Database, Search, GitMerge, Sliders, MessageSquare];
 
   return (
-    <div className="mt-2.5 rounded-xl bg-themeBg/40 border border-themeBorder/60 overflow-hidden text-xs transition-all">
-      {/* Toggle Button Badge */}
+    <div className="mt-4 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/80 shadow-[0_32px_80px_-40px_rgba(124,58,237,0.45)] transition-all duration-300">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3.5 py-2 text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeBg/60 transition-colors select-none"
+        className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left text-slate-100 hover:bg-slate-900/80 transition-colors"
       >
-        <div className="flex items-center gap-2 font-mono text-[10px]">
-          <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <span className="font-bold text-amber-400/90 uppercase tracking-wider">Inspect RAG Pipeline</span>
-          <span className="text-themeBorder">|</span>
-          <span className="flex items-center gap-1 text-themeTextSecondary">
-            <Clock className="w-3 h-3" />
-            {totalDuration}ms total
-          </span>
+        <div className="flex items-center gap-4">
+          <div className="grid h-12 w-12 place-items-center rounded-3xl bg-gradient-to-br from-violet-500/15 to-cyan-400/10 text-cyan-200 shadow-lg shadow-cyan-500/10">
+            <Zap className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.35em] text-cyan-300 font-semibold">Inspect RAG Pipeline</p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">Hybrid retrieval flow with dense + sparse fusion</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1 text-[10px] font-semibold">
-          <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            6 Stages Fused
+        <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1">
+            <Clock className="h-3.5 w-3.5 text-cyan-300" />
+            {totalDuration}ms
           </span>
-          {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-violet-200">
+            {stages.length} stages
+          </span>
+          {isOpen ? <ChevronUp className="h-4 w-4 text-slate-300" /> : <ChevronDown className="h-4 w-4 text-slate-300" />}
         </div>
       </button>
 
-      {/* Expandable Flowchart Timeline */}
       {isOpen && (
-        <div className="p-4 border-t border-themeBorder/50 bg-themeSidebar/50 space-y-3 animate-fadeIn">
-          <div className="text-[10px] text-themeTextSecondary uppercase font-bold tracking-widest mb-2">
-            Execution Flowchart (Dense + Sparse Hybrid RAG)
-          </div>
+        <div className="border-t border-white/10 bg-slate-950/90 px-4 py-5 space-y-4">
+          {queryText && (
+            <div className="rounded-[1.5rem] border border-violet-500/15 bg-violet-500/5 px-4 py-3 text-sm text-slate-100">
+              <span className="font-semibold text-cyan-200">Query:</span>{' '}
+              <span className="text-slate-200">{queryText.length > 96 ? `${queryText.slice(0, 96)}...` : queryText}</span>
+            </div>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {stages.map((stage, idx) => {
               const IconComponent = STAGE_ICONS[idx % STAGE_ICONS.length];
               return (
                 <div
                   key={idx}
-                  className="p-3 rounded-xl bg-themeCard border border-themeBorder/70 flex flex-col justify-between hover:border-themeAccent/40 transition-all shadow-sm group"
+                  className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 shadow-[0_20px_60px_-50px_rgba(15,23,42,0.7)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-400/30 hover:bg-slate-900/80"
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-themeAccent/15 text-themeAccent border border-themeAccent/30 flex items-center justify-center font-mono text-[10px] font-bold">
-                        <IconComponent className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="font-bold text-themeTextPrimary text-[11px] truncate max-w-[130px]">
-                        {stage.step}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-12 w-12 place-items-center rounded-3xl bg-gradient-to-br from-violet-500/15 to-cyan-400/10 text-cyan-200 shadow-sm shadow-cyan-500/10">
+                        <IconComponent className="h-5 w-5" />
                       </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-100">{stage.step}</p>
+                        <p className="mt-1 text-[13px] leading-5 text-slate-400">{stage.detail}</p>
+                      </div>
                     </div>
-
-                    <span className="font-mono text-[9px] text-themeAccent px-1.5 py-0.5 rounded bg-themeBg border border-themeBorder">
+                    <span className="rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-semibold text-slate-300 border border-white/10">
                       {stage.durationMs}ms
                     </span>
                   </div>
-
-                  <p className="text-[10px] text-themeTextSecondary leading-normal line-clamp-2">
-                    {stage.detail}
-                  </p>
                 </div>
               );
             })}
           </div>
 
-          {/* Diagram connector visual summary */}
-          <div className="pt-2 border-t border-themeBorder/40 flex items-center justify-between text-[10px] text-themeTextSecondary font-mono">
-            <span>Dense Pinecone (15) + Sparse BM25 (15)</span>
-            <span className="text-themeAccent">→ RRF Fusion (30) → Rerank Top 5 → LLM</span>
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 px-4 py-3 text-[12px] text-slate-400 shadow-inner shadow-slate-950/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="font-medium text-slate-200">Dense Pinecone + Sparse BM25 → fused with RRF</span>
+            <span className="inline-flex items-center rounded-full bg-slate-950/60 px-3 py-1 text-[11px] text-cyan-300">
+              Rerank → Final answer
+            </span>
           </div>
         </div>
       )}

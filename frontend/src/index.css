@@ -5,31 +5,31 @@
 @tailwind utilities;
 
 :root {
-  /* Default Theme: Slate Dark */
-  --color-bg: #0B0F19;
-  --color-sidebar: #0E1524;
-  --color-card: #131C2E;
-  --color-border: #1E293B;
-  --color-bubble-ai: #161F30;
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #94A3B8;
-  --color-accent: #6366F1;
-  --color-accent-hover: #4F46E5;
-  --color-accent-light: rgba(99, 102, 241, 0.1);
+  /* Default Theme: Modern Night Slate */
+  --color-bg: #070C1F;
+  --color-sidebar: #091025;
+  --color-card: #111B36;
+  --color-border: #1D2A4A;
+  --color-bubble-ai: #0F1732;
+  --color-text-primary: #E5E7F0;
+  --color-text-secondary: #A5B6D1;
+  --color-accent: #7C3AED;
+  --color-accent-hover: #5B21B6;
+  --color-accent-light: rgba(124, 58, 237, 0.14);
 }
 
 /* Theme definitions */
 body.theme-slate {
-  --color-bg: #0B0F19;
-  --color-sidebar: #0E1524;
-  --color-card: #131C2E;
-  --color-border: #1E293B;
-  --color-bubble-ai: #161F30;
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #94A3B8;
-  --color-accent: #6366F1;
-  --color-accent-hover: #4F46E5;
-  --color-accent-light: rgba(99, 102, 241, 0.1);
+  --color-bg: #070C1F;
+  --color-sidebar: #091025;
+  --color-card: #111B36;
+  --color-border: #1D2A4A;
+  --color-bubble-ai: #0F1732;
+  --color-text-primary: #E5E7F0;
+  --color-text-secondary: #A5B6D1;
+  --color-accent: #7C3AED;
+  --color-accent-hover: #5B21B6;
+  --color-accent-light: rgba(124, 58, 237, 0.14);
   color-scheme: dark;
 }
 
@@ -41,9 +41,9 @@ body.theme-light {
   --color-bubble-ai: #F1F5F9;
   --color-text-primary: #0F172A;
   --color-text-secondary: #64748B;
-  --color-accent: #4F46E5;
-  --color-accent-hover: #4338CA;
-  --color-accent-light: rgba(79, 70, 229, 0.1);
+  --color-accent: #7C3AED;
+  --color-accent-hover: #5B21B6;
+  --color-accent-light: rgba(124, 58, 237, 0.12);
   color-scheme: light;
 }
 
@@ -77,11 +77,11 @@ body.theme-emerald {
 
 @layer base {
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Outfit', sans-serif;
     @apply transition-colors duration-300;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 }
 
