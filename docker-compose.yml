@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
+    env_file:
       - ./backend/.env
     volumes:
       - ./backend:/app
@@ -17,7 +17,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4173:4173"
-    environment:
+    env_file:
       - ./frontend/.env.local
     volumes:
       - ./frontend:/app
