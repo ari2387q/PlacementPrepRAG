@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, HelpCircle, Layers, CheckCircle2, XCircle, RotateCcw, ChevronRight, ChevronLeft, Eye, X, BookOpen } from 'lucide-react';
 
 export interface QuizItem {
@@ -70,15 +70,22 @@ const DEFAULT_QUIZ_ITEMS: QuizItem[] = [
   }
 ];
 
-export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, onClose }) => {
+export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, items, isLoading, errorMessage, onRetry, onClose }) => {
   const [mode, setMode] = useState<'quiz' | 'flashcard'>('quiz');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [answeredMap, setAnsweredMap] = useState<Record<number, { chosen: number; correct: boolean }>>({});
   const [isFlipped, setIsFlipped] = useState(false);
-  const [items] = useState<QuizItem[]>(DEFAULT_QUIZ_ITEMS);
+  const quizItems = items && items.length > 0 ? items : DEFAULT_QUIZ_ITEMS;
 
-  const currentItem = items[currentIndex];
+  useEffect(() => {
+    setCurrentIndex(0);
+    setScore(0);
+    setAnsweredMap({});
+    setIsFlipped(false);
+  }, [items]);
+
+  const currentItem = quizItems[currentIndex];
 
   const handleSelectOption = (optionIndex: number) => {
     if (answeredMap[currentIndex] !== undefined) return;
@@ -93,7 +100,7 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
   };
 
   const handleNext = () => {
-    if (currentIndex < items.length - 1) {
+    if (currentIndex < quizItems.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setIsFlipped(false);
     }
@@ -167,11 +174,33 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
 
       {/* Main Deck Container */}
       <div className="p-5">
-        {/* Progress & Score Bar */}
+        {/* Loading / Error Banner */}
+        {isLoading && (
+          <div className="mb-4 rounded-2xl border border-themeAccent/30 bg-themeBg/80 px-4 py-3 text-xs font-semibold text-themeAccent">
+            Generating quiz items from your uploaded document...
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-300">
+            <div className="flex items-center justify-between gap-4">
+              <span>{errorMessage}</span>
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="text-[10px] font-bold uppercase tracking-widest text-themeAccent hover:text-themeAccentHover"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-4 text-xs font-semibold text-themeTextSecondary">
           <span className="flex items-center gap-1.5 font-mono text-[11px]">
             <BookOpen className="w-3.5 h-3.5 text-themeAccent" />
-            Card {currentIndex + 1} of {items.length}
+            Card {currentIndex + 1} of {quizItems.length}
           </span>
 
           <span className="px-2.5 py-1 rounded-lg bg-themeBg/60 border border-themeBorder text-themeTextPrimary text-[10px] font-mono">
@@ -294,7 +323,7 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
             </button>
             <button
               onClick={handleNext}
-              disabled={currentIndex === items.length - 1}
+              disabled={currentIndex === quizItems.length - 1}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-themeAccent hover:bg-themeAccentHover text-white text-xs font-bold disabled:opacity-30 transition-colors shadow"
             >
               Next Card
