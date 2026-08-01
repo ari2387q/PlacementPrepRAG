@@ -13,6 +13,10 @@ export interface QuizItem {
 interface QuizFlashcardDeckProps {
   filename: string;
   sessionId: string;
+  items?: QuizItem[] | null;
+  isLoading?: boolean;
+  errorMessage?: string | null;
+  onRetry?: () => void;
   onClose: () => void;
 }
 

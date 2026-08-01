@@ -21,7 +21,7 @@ import {
   Zap,
   HelpCircle as QuizIcon
 } from 'lucide-react';
-import { QuizFlashcardDeck } from './components/QuizFlashcardDeck';
+import { QuizFlashcardDeck, type QuizItem } from './components/QuizFlashcardDeck';
 import { PipelineVisualizer } from './components/PipelineVisualizer';
 import { QuoteTooltip } from './components/QuoteTooltip';
 
@@ -53,6 +53,9 @@ function App() {
   const [uploadedFile, setUploadedFile] = useState<{ sessionId: string; filename: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  const [quizItems, setQuizItems] = useState<QuizItem[] | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizError, setQuizError] = useState<string | null>(null);
   
   // UI Panels toggles
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -109,18 +112,29 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const clearHistory = () => {
-    if (window.confirm("Are you sure you want to clear your chat history?")) {
-      setMessages([
-        {
-          id: 'welcome',
-          role: 'assistant',
-          content: "Chat history cleared. What topic shall we prepare next?",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-      setError(null);
-      setShowQuizDeck(false);
+  const clearHistory = async () => {
+    if (!window.confirm("Are you sure you want to clear your chat history?")) {
+      return;
+    }
+
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: "Chat history cleared. What topic shall we prepare next?",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+    setError(null);
+    setShowQuizDeck(false);
+    setQuizItems(null);
+    setQuizError(null);
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
+      await fetch(`${baseUrl}/clear`, { method: 'POST' });
+    } catch (err) {
+      console.warn('Backend history clear failed', err);
     }
   };
 
@@ -146,6 +160,9 @@ function App() {
 
     setIsUploading(true);
     setError(null);
+    setQuizItems(null);
+    setQuizError(null);
+    setShowQuizDeck(false);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -172,6 +189,9 @@ function App() {
       };
 
       setUploadedFile(newUploaded);
+      setQuizItems(null);
+      setQuizError(null);
+      setShowQuizDeck(false);
 
       // If user queued a message while PDF was uploading, dispatch it now!
       if (pendingPrompt) {
@@ -198,6 +218,8 @@ function App() {
     const sid = uploadedFile.sessionId;
     setUploadedFile(null);
     setShowQuizDeck(false);
+    setQuizItems(null);
+    setQuizError(null);
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
       await fetch(`${baseUrl}/document/${sid}`, {
@@ -295,8 +317,49 @@ function App() {
     }
   };
 
+  const fetchQuizItems = async (sessionId: string) => {
+    setQuizLoading(true);
+    setQuizError(null);
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
+      const response = await fetch(`${baseUrl}/document/generate-quiz`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, count: 4 })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Quiz generation failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data.quiz_items) || data.quiz_items.length === 0) {
+        throw new Error('No quiz items were generated.');
+      }
+
+      setQuizItems(data.quiz_items);
+    } catch (err: any) {
+      setQuizItems([]);
+      setQuizError(err?.message || 'Failed to generate quiz items.');
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const handleToggleQuizDeck = async () => {
+    if (!uploadedFile) return;
+
+    const nextShow = !showQuizDeck;
+    setShowQuizDeck(nextShow);
+
+    if (nextShow && !quizItems) {
+      await fetchQuizItems(uploadedFile.sessionId);
+    }
+  };
+
   const handleQuoteText = (selectedText: string) => {
-    const formatted = `> "${selectedText}"\n\nCould you explain this point further?`;
+    const formatted = `> "${selectedText}"`;
     setInput(prev => prev ? `${prev}\n\n${formatted}` : formatted);
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -543,7 +606,7 @@ function App() {
             {/* Quiz / Flashcard Option Toggle Button */}
             {uploadedFile && (
               <button
-                onClick={() => setShowQuizDeck(!showQuizDeck)}
+                onClick={handleToggleQuizDeck}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${
                   showQuizDeck 
                     ? 'bg-themeAccent border-themeAccent text-white' 
@@ -575,6 +638,10 @@ function App() {
               <QuizFlashcardDeck 
                 filename={uploadedFile.filename}
                 sessionId={uploadedFile.sessionId}
+                items={quizItems}
+                isLoading={quizLoading}
+                errorMessage={quizError}
+                onRetry={() => uploadedFile && fetchQuizItems(uploadedFile.sessionId)}
                 onClose={() => setShowQuizDeck(false)}
               />
             )}
@@ -713,7 +780,7 @@ function App() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setShowQuizDeck(!showQuizDeck)}
+                        onClick={handleToggleQuizDeck}
                         className="text-[10px] font-bold text-themeAccent hover:underline"
                       >
                         {showQuizDeck ? "Hide Quiz" : "⚡ Practice Quiz"}
