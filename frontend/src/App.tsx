@@ -16,8 +16,14 @@ import {
   HelpCircle,
   Plus,
   FileText,
-  X
+  X,
+  Menu,
+  Zap,
+  HelpCircle as QuizIcon
 } from 'lucide-react';
+import { QuizFlashcardDeck } from './components/QuizFlashcardDeck';
+import { PipelineVisualizer } from './components/PipelineVisualizer';
+import { QuoteTooltip } from './components/QuoteTooltip';
 
 interface Message {
   id: string;
@@ -25,6 +31,7 @@ interface Message {
   content: string;
   timestamp: string;
   sources?: string[];
+  pipelineStages?: any[];
 }
 
 const PRESET_PROMPTS = [
@@ -45,10 +52,16 @@ function App() {
   const [theme, setTheme] = useState<Theme>('slate');
   const [uploadedFile, setUploadedFile] = useState<{ sessionId: string; filename: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  
+  // UI Panels toggles
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showQuizDeck, setShowQuizDeck] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mainChatRef = useRef<HTMLDivElement>(null);
 
   // Load chat history & theme on mount
   useEffect(() => {
@@ -107,6 +120,7 @@ function App() {
         }
       ]);
       setError(null);
+      setShowQuizDeck(false);
     }
   };
 
@@ -120,6 +134,7 @@ function App() {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // PDF Upload handler with automatic queued prompt execution
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -151,13 +166,25 @@ function App() {
         throw new Error(data.error);
       }
 
-      setUploadedFile({
+      const newUploaded = {
         sessionId: data.session_id,
         filename: data.filename,
-      });
+      };
+
+      setUploadedFile(newUploaded);
+
+      // If user queued a message while PDF was uploading, dispatch it now!
+      if (pendingPrompt) {
+        const textToDispatch = pendingPrompt;
+        setPendingPrompt(null);
+        setTimeout(() => {
+          handleSendMessage(textToDispatch, newUploaded);
+        }, 150);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to upload file.");
+      setPendingPrompt(null);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -170,6 +197,7 @@ function App() {
     if (!uploadedFile) return;
     const sid = uploadedFile.sessionId;
     setUploadedFile(null);
+    setShowQuizDeck(false);
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
       await fetch(`${baseUrl}/document/${sid}`, {
@@ -180,9 +208,18 @@ function App() {
     }
   };
 
-  const handleSendMessage = async (textToSend: string) => {
+  const handleSendMessage = async (textToSend: string, fileOverride?: { sessionId: string; filename: string }) => {
     const trimmed = textToSend.trim();
     if (!trimmed) return;
+
+    // Check if upload is still in progress -> Queue prompt until upload completes
+    if (isUploading && !fileOverride) {
+      setPendingPrompt(trimmed);
+      setInput('');
+      return;
+    }
+
+    const activeFile = fileOverride || uploadedFile;
 
     setError(null);
     const userMsgId = Date.now().toString();
@@ -203,13 +240,13 @@ function App() {
 
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
-      const url = uploadedFile 
+      const url = activeFile 
         ? `${baseUrl}/document/query`
         : `${baseUrl}/query`;
 
-      const body = uploadedFile
+      const body = activeFile
         ? {
-            session_id: uploadedFile.sessionId,
+            session_id: activeFile.sessionId,
             query: trimmed,
             top_k: 5
           }
@@ -237,7 +274,8 @@ function App() {
         role: 'assistant',
         content: data.answer || "I couldn't fetch a valid answer. Please try again.",
         timestamp: formatTimestamp(),
-        sources: data.sources || []
+        sources: data.sources || [],
+        pipelineStages: data.pipeline_stages
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -248,12 +286,22 @@ function App() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "⚠️ **Connection Error**.",
+        content: "⚠️ **Connection Error**. Unable to retrieve response from backend server.",
         timestamp: formatTimestamp(),
         sources: []
       }]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleQuoteText = (selectedText: string) => {
+    const formatted = `> "${selectedText}"\n\nCould you explain this point further?`;
+    setInput(prev => prev ? `${prev}\n\n${formatted}` : formatted);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
     }
   };
 
@@ -354,29 +402,53 @@ function App() {
   return (
     <div className="flex h-screen w-screen bg-themeBg text-themeTextPrimary overflow-hidden font-sans">
       
-      {/* 1. LEFT SIDEBAR */}
-      <aside className="hidden md:flex flex-col w-72 lg:w-80 flex-shrink-0 bg-themeSidebar border-r border-themeBorder/70 p-5 justify-between">
-        
+      {/* Floating Selection Tooltip for "Quote & Ask" */}
+      <QuoteTooltip containerRef={mainChatRef} onQuote={handleQuoteText} />
+
+      {/* 1. COLLAPSIBLE BURGER SIDEBAR */}
+      <aside 
+        className={`${
+          isSidebarOpen ? 'w-72 lg:w-80 flex' : 'w-0 hidden'
+        } flex-col flex-shrink-0 bg-themeSidebar border-r border-themeBorder/70 p-5 justify-between transition-all duration-300 z-20`}
+      >
         {/* Upper Sidebar */}
         <div className="space-y-6 overflow-y-auto pr-1">
           {/* Logo Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-themeAccent to-indigo-500 flex items-center justify-center shadow-lg shadow-themeAccent/20">
-              <Sparkles className="w-5.5 h-5.5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold tracking-tight">PrepAI Dashboard</span>
-                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-themeAccent to-indigo-500 flex items-center justify-center shadow-lg shadow-themeAccent/20">
+                <Sparkles className="w-5.5 h-5.5 text-white" />
               </div>
-              <p className="text-[10px] text-themeTextSecondary tracking-wider uppercase font-semibold leading-none">RAG Placement Hub</p>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-extrabold tracking-tight">PrepAI Dashboard</span>
+                  <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                </div>
+                <p className="text-[10px] text-themeTextSecondary tracking-wider uppercase font-semibold leading-none">RAG Placement Hub</p>
+              </div>
             </div>
+
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1.5 rounded-lg text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeCard transition-colors md:hidden"
+              title="Close sidebar"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-
+          {/* Quick RAG Info Card */}
+          <div className="p-3.5 rounded-xl bg-themeCard border border-themeBorder/60 space-y-2">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-themeAccent flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Dual Retrieval Engine
+            </span>
+            <p className="text-xs text-themeTextSecondary leading-relaxed m-0">
+              Pinecone Dense Vectors + BM25 Sparse Search fused via Reciprocal Rank Fusion ($k=60$).
+            </p>
+          </div>
         </div>
 
-        {/* Lower Sidebar (Themes & Branding) */}
+        {/* Lower Sidebar (Themes & Settings) */}
         <div className="space-y-5 pt-4 border-t border-themeBorder/50">
           
           {/* Theme Selector Grid */}
@@ -443,12 +515,18 @@ function App() {
       {/* 2. MAIN CHAT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
         
-        {/* Main App Header */}
+        {/* Main App Header with Burger Toggle */}
         <header className="flex-shrink-0 bg-themeSidebar/70 border-b border-themeBorder/70 backdrop-blur px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="md:hidden w-8 h-8 rounded-lg bg-themeAccent flex items-center justify-center">
-              <Sparkles className="w-4.5 h-4.5 text-white" />
-            </div>
+            {/* Burger Toggle Window Icon Button */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 rounded-xl bg-themeCard border border-themeBorder hover:border-themeAccent/50 text-themeTextSecondary hover:text-themeTextPrimary transition-all"
+              title="Toggle sidebar window"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold text-themeTextPrimary m-0 leading-tight">PlacementPrep AI</h1>
@@ -457,27 +535,25 @@ function App() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
               </div>
-              <p className="text-[10px] text-themeTextSecondary m-0 leading-none">Smart Interview Assistant</p>
+              <p className="text-[10px] text-themeTextSecondary m-0 leading-none">Smart Placement Assistant</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            
-            {/* Mobile-only Theme Swapper Icon Toggle */}
-            <div className="md:hidden flex items-center bg-themeCard border border-themeBorder/40 rounded-lg p-1">
-              {(['slate', 'light', 'cyberpunk', 'emerald'] as Theme[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTheme(t)}
-                  className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold ${
-                    theme === t ? 'bg-themeAccent text-white' : 'text-themeTextSecondary'
-                  }`}
-                  title={`Switch to ${t}`}
-                >
-                  {t[0].toUpperCase()}
-                </button>
-              ))}
-            </div>
+            {/* Quiz / Flashcard Option Toggle Button */}
+            {uploadedFile && (
+              <button
+                onClick={() => setShowQuizDeck(!showQuizDeck)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${
+                  showQuizDeck 
+                    ? 'bg-themeAccent border-themeAccent text-white' 
+                    : 'bg-themeAccent/15 border-themeAccent/40 text-themeAccent hover:bg-themeAccent/25'
+                }`}
+              >
+                <QuizIcon className="w-3.5 h-3.5" />
+                <span>⚡ Generate Quiz & Flashcards</span>
+              </button>
+            )}
 
             <button
               onClick={clearHistory}
@@ -491,8 +567,18 @@ function App() {
         </header>
 
         {/* Scrollable messages box */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 w-full bg-gradient-to-b from-transparent to-themeCard/10">
+        <main ref={mainChatRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 w-full bg-gradient-to-b from-transparent to-themeCard/10">
           <div className="max-w-3xl mx-auto w-full flex flex-col space-y-6">
+            
+            {/* Interactive Flashcard / Quiz Option Deck */}
+            {uploadedFile && showQuizDeck && (
+              <QuizFlashcardDeck 
+                filename={uploadedFile.filename}
+                sessionId={uploadedFile.sessionId}
+                onClose={() => setShowQuizDeck(false)}
+              />
+            )}
+
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -516,7 +602,7 @@ function App() {
                 </div>
 
                 {/* Message Bubble wrapper */}
-                <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} space-y-1`}>
+                <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} space-y-1 w-full`}>
                   <div
                     className={`px-5 py-3 rounded-2xl shadow-sm text-sm leading-relaxed border ${
                       message.role === 'user'
@@ -526,6 +612,7 @@ function App() {
                   >
                     {renderMessageContent(message.content, message.id)}
                     
+                    {/* Sources Badge */}
                     {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
                       <div className="mt-2.5 flex flex-wrap gap-1.5 items-center text-[10px] text-themeTextSecondary border-t border-themeBorder/30 pt-2 select-none">
                         <span className="font-semibold uppercase tracking-wider text-[9px]">Sources:</span>
@@ -535,6 +622,11 @@ function App() {
                           </span>
                         ))}
                       </div>
+                    )}
+
+                    {/* Animated RAG Pipeline Inspector */}
+                    {message.role === 'assistant' && message.id !== 'welcome' && (
+                      <PipelineVisualizer stages={message.pipelineStages} queryText={message.content} />
                     )}
                   </div>
                   <span className="text-[10px] text-themeTextSecondary px-1.5">
@@ -551,12 +643,12 @@ function App() {
                   <Bot className="w-4.5 h-4.5 animate-pulse" />
                 </div>
                 <div className="flex flex-col items-start space-y-1">
-                  <div className="px-5 py-4.5 rounded-2xl rounded-tl-none bg-themeCard border border-themeBorder/80 text-themeTextSecondary">
+                  <div className="px-5 py-4 rounded-2xl rounded-tl-none bg-themeCard border border-themeBorder/80 text-themeTextSecondary">
                     <div className="flex items-center space-x-2">
                       <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                       <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                       <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce"></div>
-                      <span className="text-xs text-themeTextSecondary/80 ml-2 select-none">Searching...</span>
+                      <span className="text-xs text-themeTextSecondary/80 ml-2 select-none">Searching Pinecone & BM25 index...</span>
                     </div>
                   </div>
                 </div>
@@ -606,29 +698,54 @@ function App() {
               </div>
             )}
 
-            {/* Constrained Input Bar Form */}
+            {/* Input Form */}
             <form onSubmit={onSubmit} className="relative flex items-end gap-2.5">
               <div className="relative flex-1 bg-themeCard border border-themeBorder focus-within:border-themeAccent/80 focus-within:ring-2 focus-within:ring-themeAccent/15 rounded-2xl transition-all duration-150 overflow-hidden flex flex-col px-4 py-3">
+                
+                {/* Uploaded File Badge */}
                 {uploadedFile && (
-                  <div className="flex items-center gap-2 mb-2 bg-themeBg/60 border border-themeBorder rounded-lg px-2.5 py-1.5 self-start text-xs text-themeTextSecondary transition-all duration-200 hover:border-themeAccent/40">
-                    <FileText className="w-4 h-4 text-themeAccent" />
-                    <span className="truncate max-w-[180px] font-medium">{uploadedFile.filename}</span>
-                    <button
-                      type="button"
-                      onClick={handleRemoveFile}
-                      className="hover:text-rose-500 transition-colors p-0.5 ml-1 rounded hover:bg-rose-500/10"
-                      title="Remove PDF"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                  <div className="flex items-center justify-between gap-2 mb-2 bg-themeBg/60 border border-themeBorder rounded-lg px-2.5 py-1.5 text-xs text-themeTextSecondary">
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="w-4 h-4 text-themeAccent" />
+                      <span className="truncate max-w-[180px] font-medium">{uploadedFile.filename}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowQuizDeck(!showQuizDeck)}
+                        className="text-[10px] font-bold text-themeAccent hover:underline"
+                      >
+                        {showQuizDeck ? "Hide Quiz" : "⚡ Practice Quiz"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="hover:text-rose-500 transition-colors p-0.5 rounded hover:bg-rose-500/10"
+                        title="Remove PDF"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 )}
+
+                {/* Uploading Status Banner */}
                 {isUploading && (
-                  <div className="flex items-center gap-2 mb-2 bg-themeBg/60 border border-themeBorder rounded-lg px-2.5 py-1.5 self-start text-xs text-themeTextSecondary">
+                  <div className="flex items-center gap-2 mb-2 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-2.5 py-1.5 text-xs text-indigo-300">
                     <RefreshCw className="w-4 h-4 animate-spin text-themeAccent" />
-                    <span className="animate-pulse">Uploading and embedding PDF...</span>
+                    <span className="animate-pulse font-medium">Embedding PDF chunks into RAM...</span>
                   </div>
                 )}
+
+                {/* Queued Prompt Banner */}
+                {pendingPrompt && (
+                  <div className="flex items-center gap-2 mb-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs text-amber-300">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <span className="truncate font-medium">Prompt queued: "{pendingPrompt}" — auto-sending once indexing finishes</span>
+                  </div>
+                )}
+
                 <div className="flex items-end gap-2 w-full">
                   <button
                     type="button"
@@ -661,7 +778,7 @@ function App() {
               
               <button
                 type="submit"
-                disabled={isLoading || isUploading || !input.trim()}
+                disabled={isLoading || !input.trim()}
                 className="flex-shrink-0 w-12 h-12 rounded-2xl bg-themeAccent hover:bg-themeAccentHover disabled:bg-themeCard disabled:text-themeTextSecondary/40 disabled:border-themeBorder/50 text-white flex items-center justify-center shadow-lg shadow-themeAccent/10 hover:shadow-themeAccent/25 border border-themeAccent/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-100"
               >
                 {isLoading ? (
