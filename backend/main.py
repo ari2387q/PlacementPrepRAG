@@ -101,3 +101,15 @@ def delete_document_session(session_id:str):
     rag.clear_document_history(session_id)
     return {"status":"session cleared"}
 
+class QuizRequest(BaseModel):
+    session_id: str
+    count: int = 4
+
+@app.post("/document/generate-quiz")
+def generate_quiz(request: QuizRequest):
+    session = document_sessions.get(request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+    
+    quiz_items = rag.generate_quiz_from_store(session["store"], count=request.count)
+    return {"quiz_items": quiz_items}

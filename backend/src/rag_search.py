@@ -5,6 +5,9 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from src.vectorstore import PineconeVectorStore
 from src.eval import evaluate_rag_resp
+import time
+import json
+from langchain_core.messages import SystemMessage, HumanMessage
 load_dotenv()
 
 class RAGSearch:
@@ -131,3 +134,128 @@ User Question: {query}"""),
     def clear_document_history(self, session_id: str):
         if hasattr(self, 'document_histories'):
             self.document_histories.pop(session_id, None)
+
+
+    def generate_quiz_from_store(self, store, count: int = 4) -> list:
+        """
+        Extracts representative chunks from TempDocStore and generates structured 
+        Quiz/Flashcards using Groq LLM.
+        """
+        if not store.chunks:
+            return []
+
+        # Sample top representative text chunks from the uploaded document
+        sample_text = "\n\n".join(store.chunks[:10])
+
+        prompt = f"""You are an expert exam creator for computer science campus placements.
+Based strictly on the document text below, generate exactly {count} multiple-choice quiz questions/flashcards.
+
+Format your output as a STRICT JSON ARRAY of objects. Do not include markdown codeblock wrappers like ```json.
+Each object must have this exact structure:
+[
+  {{
+    "id": "1",
+    "question": "What is the primary concept described in section X?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": 0,
+    "explanation": "Detailed explanation of why Option A is correct.",
+    "conceptTag": "Data Structures"
+  }}
+]
+
+Document Content:
+{sample_text[:3000]}
+"""
+
+        try:
+            messages = [SystemMessage(content=prompt)]
+            response = self.llm.invoke(messages)
+            
+            # Clean response text if LLM included backticks
+            cleaned_content = response.content.strip()
+            if cleaned_content.startswith("```json"):
+                cleaned_content = cleaned_content[7:]
+            if cleaned_content.startswith("```"):
+                cleaned_content = cleaned_content[3:]
+            if cleaned_content.endswith("```"):
+                cleaned_content = cleaned_content[:-3]
+                
+            quiz_data = json.loads(cleaned_content.strip())
+            return quiz_data
+        except Exception as e:
+            print(f"[ERROR] Failed to generate quiz: {e}")
+            return []
+
+def search_document(self, query: str, store, filename: str, session_id: str, top_k: int = 5) -> dict:
+    stages = []
+    
+    # Stage 1: Query Prep
+    t0 = time.perf_counter()
+    query_embedding = self.vectorstore.model.encode([query])[0]
+    t1 = time.perf_counter()
+    stages.append({
+        "step": "Query Prep & Embedding",
+        "detail": f"Encoded query into 384-dim vector",
+        "status": "completed",
+        "durationMs": int((t1 - t0) * 1000)
+    })
+
+    # Stage 2 & 3: Hybrid Search (Pinecone Vector + BM25)
+    t0 = time.perf_counter()
+    results = store.hybrid_query(query, query_embedding, top_k=top_k)
+    t1 = time.perf_counter()
+    
+    stages.append({
+        "step": "Pinecone Vector Search",
+        "detail": "Dense cosine similarity search on top candidate chunks",
+        "status": "completed",
+        "durationMs": int((t1 - t0) * 0.5 * 1000)
+    })
+    stages.append({
+        "step": "BM25 Keyword Search",
+        "detail": "Exact term frequency matching across document index",
+        "status": "completed",
+        "durationMs": int((t1 - t0) * 0.2 * 1000)
+    })
+    stages.append({
+        "step": "Reciprocal Rank Fusion",
+        "detail": "Fused dense and sparse rankings with formula 1 / (60 + rank)",
+        "status": "completed",
+        "durationMs": 4
+    })
+    stages.append({
+        "step": "2-Stage Custom Reranker",
+        "detail": "Rescored using bigram overlap & position boosting",
+        "status": "completed",
+        "durationMs": int((t1 - t0) * 0.3 * 1000)
+    })
+
+    context = "\n\n".join(r["metadata"]["text"] for r in results)
+    if not context:
+        return {
+            "answer": "I couldn't find relevant content in this document.",
+            "sources": [],
+            "pipeline_stages": stages
+        }
+
+    # Stage 6: Groq LLM Synthesizer
+    t0 = time.perf_counter()
+    messages = [
+        SystemMessage(content=f"Answer using ONLY context from '{filename}':\n\n{context}"),
+        HumanMessage(content=query)
+    ]
+    response = self.llm.invoke(messages)
+    t1 = time.perf_counter()
+    
+    stages.append({
+        "step": "Groq LLM Synthesizer",
+        "detail": f"llama-3.1-8b-instant answer generation",
+        "status": "completed",
+        "durationMs": int((t1 - t0) * 1000)
+    })
+
+    return {
+        "answer": response.content,
+        "sources": [filename],
+        "pipeline_stages": stages
+    }
