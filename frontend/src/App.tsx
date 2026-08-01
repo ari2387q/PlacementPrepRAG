@@ -617,7 +617,6 @@ function App() {
                 <span>⚡ Generate Quiz & Flashcards</span>
               </button>
             )}
-
             <button
               onClick={clearHistory}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-themeTextSecondary hover:text-rose-500 hover:bg-rose-500/10 border border-themeBorder/50 hover:border-rose-500/30 transition-all text-xs font-semibold"
