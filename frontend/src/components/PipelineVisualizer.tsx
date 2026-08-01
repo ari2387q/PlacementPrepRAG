@@ -10,10 +10,9 @@ export interface PipelineStage {
 
 interface PipelineVisualizerProps {
   stages?: PipelineStage[];
-  queryText?: string;
 }
 
-export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({ stages, queryText }) => {
+export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({ stages }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   if (!stages || stages.length === 0) return null;

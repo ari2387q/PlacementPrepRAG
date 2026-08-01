@@ -693,7 +693,7 @@ function App() {
 
                     {/* Animated RAG Pipeline Inspector */}
                     {message.role === 'assistant' && message.id !== 'welcome' && (
-                      <PipelineVisualizer stages={message.pipelineStages} queryText={message.content} />
+                      <PipelineVisualizer stages={message.pipelineStages} />
                     )}
                   </div>
                   <span className="text-[10px] text-themeTextSecondary px-1.5">
