@@ -1,94 +1,116 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Default Theme: Modern Night Slate */
-  --color-bg: #070C1F;
-  --color-sidebar: #091025;
-  --color-card: #111B36;
-  --color-border: #1D2A4A;
-  --color-bubble-ai: #0F1732;
-  --color-text-primary: #E5E7F0;
-  --color-text-secondary: #A5B6D1;
-  --color-accent: #7C3AED;
-  --color-accent-hover: #5B21B6;
-  --color-accent-light: rgba(124, 58, 237, 0.14);
+  /* Default Theme: Deep Space Cyberpunk */
+  --color-bg: #030712; /* Very dark blue/black */
+  --color-sidebar: rgba(10, 15, 30, 0.4);
+  --color-card: rgba(17, 24, 39, 0.6);
+  --color-border: rgba(55, 65, 81, 0.4);
+  --color-bubble-ai: rgba(31, 41, 55, 0.5);
+  --color-text-primary: #F3F4F6;
+  --color-text-secondary: #9CA3AF;
+  --color-accent: #38BDF8; /* Neon Cyan */
+  --color-accent-hover: #0EA5E9;
+  --color-accent-light: rgba(56, 189, 248, 0.15);
 }
 
 /* Theme definitions */
 body.theme-slate {
-  --color-bg: #070C1F;
-  --color-sidebar: #091025;
-  --color-card: #111B36;
-  --color-border: #1D2A4A;
-  --color-bubble-ai: #0F1732;
-  --color-text-primary: #E5E7F0;
-  --color-text-secondary: #A5B6D1;
-  --color-accent: #7C3AED;
-  --color-accent-hover: #5B21B6;
-  --color-accent-light: rgba(124, 58, 237, 0.14);
+  --color-bg: #030712;
+  --color-sidebar: rgba(10, 15, 30, 0.4);
+  --color-card: rgba(17, 24, 39, 0.6);
+  --color-border: rgba(55, 65, 81, 0.4);
+  --color-bubble-ai: rgba(31, 41, 55, 0.5);
+  --color-text-primary: #F3F4F6;
+  --color-text-secondary: #9CA3AF;
+  --color-accent: #38BDF8; 
+  --color-accent-hover: #0EA5E9;
+  --color-accent-light: rgba(56, 189, 248, 0.15);
   color-scheme: dark;
 }
 
 body.theme-light {
-  --color-bg: #F8FAFC;
-  --color-sidebar: #FFFFFF;
-  --color-card: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-bubble-ai: #F1F5F9;
+  --color-bg: #F1F5F9;
+  --color-sidebar: rgba(255, 255, 255, 0.6);
+  --color-card: rgba(255, 255, 255, 0.7);
+  --color-border: rgba(203, 213, 225, 0.6);
+  --color-bubble-ai: rgba(241, 245, 249, 0.8);
   --color-text-primary: #0F172A;
   --color-text-secondary: #64748B;
-  --color-accent: #7C3AED;
-  --color-accent-hover: #5B21B6;
-  --color-accent-light: rgba(124, 58, 237, 0.12);
+  --color-accent: #6366F1;
+  --color-accent-hover: #4F46E5;
+  --color-accent-light: rgba(99, 102, 241, 0.15);
   color-scheme: light;
 }
 
 body.theme-cyberpunk {
-  --color-bg: #0D021F;
-  --color-sidebar: #13042E;
-  --color-card: #1B0F33;
-  --color-border: #3A1B6B;
-  --color-bubble-ai: #1E0F38;
-  --color-text-primary: #FDF4FF;
-  --color-text-secondary: #C084FC;
+  --color-bg: #090014;
+  --color-sidebar: rgba(20, 0, 40, 0.4);
+  --color-card: rgba(30, 10, 50, 0.5);
+  --color-border: rgba(147, 51, 234, 0.4);
+  --color-bubble-ai: rgba(40, 10, 70, 0.4);
+  --color-text-primary: #FAF5FF;
+  --color-text-secondary: #D8B4FE;
   --color-accent: #D946EF;
   --color-accent-hover: #C026D3;
-  --color-accent-light: rgba(217, 70, 239, 0.15);
+  --color-accent-light: rgba(217, 70, 239, 0.2);
   color-scheme: dark;
 }
 
 body.theme-emerald {
-  --color-bg: #061412;
-  --color-sidebar: #0B2420;
-  --color-card: #0F302B;
-  --color-border: #123C35;
-  --color-bubble-ai: #0E2E28;
+  --color-bg: #02120C;
+  --color-sidebar: rgba(4, 30, 20, 0.4);
+  --color-card: rgba(6, 40, 28, 0.5);
+  --color-border: rgba(16, 185, 129, 0.3);
+  --color-bubble-ai: rgba(10, 50, 35, 0.4);
   --color-text-primary: #ECFDF5;
-  --color-text-secondary: #34D399;
+  --color-text-secondary: #6EE7B7;
   --color-accent: #10B981;
   --color-accent-hover: #059669;
-  --color-accent-light: rgba(16, 185, 129, 0.1);
+  --color-accent-light: rgba(16, 185, 129, 0.2);
   color-scheme: dark;
 }
 
 @layer base {
   body {
-    font-family: 'Outfit', sans-serif;
-    @apply transition-colors duration-300;
+    font-family: 'Space Grotesk', sans-serif;
+    @apply transition-colors duration-500 bg-themeBg text-themeTextPrimary;
+    /* Techy grid background */
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.05), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05), transparent 25%),
+      linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-themeCard backdrop-blur-xl border border-themeBorder shadow-xl;
+  }
+  
+  .glass-button {
+    @apply bg-themeSidebar backdrop-blur-md border border-themeBorder shadow-lg hover:border-themeAccent transition-all duration-300;
   }
 }
 
 /* Custom Scrollbar for Chat Window */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {

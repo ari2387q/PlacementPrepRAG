@@ -53,7 +53,7 @@ def health():
 @app.post("/query")
 def query(request: QueryRequest):
     results = rag.search_and_summarize(request.query, request.top_k)
-    return {"answer": results["answer"],"sources": results["sources"]}
+    return {"answer": results["answer"], "sources": results["sources"], "pipeline_stages": results.get("pipeline_stages", [])}
 
 @app.post("/clear")
 def clear_history():

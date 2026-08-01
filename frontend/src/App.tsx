@@ -85,7 +85,7 @@ function App() {
         {
           id: 'welcome',
           role: 'assistant',
-          content:"Welcome to **PlacementPrep AI**! \n\nI am your placement preparation assistant powered by RAG (Retrieval-Augmented Generation). I have data on:\n- TCS, Infosys, IBM interview experiences\n- TCS NQT previous year papers\n- HR questions for campus placements\n\nYou can also upload your own PDF and ask questions about it!\n\nHow can I help you prepare today?",
+          content: "SYSTEM ONLINE. KNOWLEDGE BASE LOADED.\n\nReady for query input.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -121,7 +121,7 @@ function App() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: "Chat history cleared. What topic shall we prepare next?",
+        content: "MEMORY WIPED. SYSTEM READY.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ]);
@@ -463,7 +463,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-themeBg text-themeTextPrimary overflow-hidden font-sans">
+    <div className="flex h-screen w-screen bg-themeBg text-themeTextPrimary overflow-hidden font-sans p-2 md:p-4 lg:p-6 gap-4">
       
       {/* Floating Selection Tooltip for "Quote & Ask" */}
       <QuoteTooltip containerRef={mainChatRef} onQuote={handleQuoteText} />
@@ -472,7 +472,7 @@ function App() {
       <aside 
         className={`${
           isSidebarOpen ? 'w-72 lg:w-80 flex' : 'w-0 hidden'
-        } flex-col flex-shrink-0 bg-themeSidebar border-r border-themeBorder/70 p-5 justify-between transition-all duration-300 z-20`}
+        } flex-col flex-shrink-0 glass-panel rounded-[2.5rem] p-5 justify-between transition-all duration-300 z-20`}
       >
         {/* Upper Sidebar */}
         <div className="space-y-6 overflow-y-auto pr-1">
@@ -493,7 +493,7 @@ function App() {
 
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="p-1.5 rounded-lg text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeCard transition-colors md:hidden"
+              className="p-1.5 rounded-full text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeCard transition-colors md:hidden"
               title="Close sidebar"
             >
               <X className="w-4 h-4" />
@@ -520,10 +520,10 @@ function App() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setTheme('slate')}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-all ${
                   theme === 'slate'
-                    ? 'bg-slate-800 border-indigo-500 text-white shadow'
-                    : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200'
+                    ? 'bg-themeAccent/20 border-themeAccent text-themeAccent shadow-[0_0_10px_rgba(56,189,248,0.2)]'
+                    : 'bg-themeBg/40 border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary'
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
@@ -531,10 +531,10 @@ function App() {
               </button>
               <button
                 onClick={() => setTheme('light')}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-all ${
                   theme === 'light'
-                    ? 'bg-slate-100 border-indigo-600 text-slate-900 shadow'
-                    : 'bg-white/40 border-slate-200 text-slate-500 hover:text-slate-800'
+                    ? 'bg-themeAccent/20 border-themeAccent text-themeAccent shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                    : 'bg-themeBg/40 border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary'
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
@@ -542,10 +542,10 @@ function App() {
               </button>
               <button
                 onClick={() => setTheme('cyberpunk')}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-all ${
                   theme === 'cyberpunk'
-                    ? 'bg-purple-950/70 border-fuchsia-500 text-fuchsia-300 shadow'
-                    : 'bg-purple-950/20 border-purple-900/60 text-purple-400 hover:text-fuchsia-300'
+                    ? 'bg-themeAccent/20 border-themeAccent text-themeAccent shadow-[0_0_10px_rgba(217,70,239,0.2)]'
+                    : 'bg-themeBg/40 border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary'
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-500" />
@@ -553,10 +553,10 @@ function App() {
               </button>
               <button
                 onClick={() => setTheme('emerald')}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-all ${
                   theme === 'emerald'
-                    ? 'bg-emerald-950/70 border-emerald-500 text-emerald-300 shadow'
-                    : 'bg-emerald-950/20 border-emerald-900/60 text-emerald-400 hover:text-emerald-300'
+                    ? 'bg-themeAccent/20 border-themeAccent text-themeAccent shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                    : 'bg-themeBg/40 border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary'
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
@@ -576,15 +576,15 @@ function App() {
       </aside>
 
       {/* 2. MAIN CHAT AREA */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 glass-panel rounded-[2.5rem] overflow-hidden relative">
         
         {/* Main App Header with Burger Toggle */}
-        <header className="flex-shrink-0 bg-themeSidebar/70 border-b border-themeBorder/70 backdrop-blur px-6 py-4 flex items-center justify-between z-10">
+        <header className="flex-shrink-0 bg-themeSidebar/40 border-b border-themeBorder/30 backdrop-blur px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             {/* Burger Toggle Window Icon Button */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-xl bg-themeCard border border-themeBorder hover:border-themeAccent/50 text-themeTextSecondary hover:text-themeTextPrimary transition-all"
+              className="p-2 rounded-full glass-button text-themeTextSecondary hover:text-themeTextPrimary"
               title="Toggle sidebar window"
             >
               <Menu className="w-5 h-5" />
@@ -620,11 +620,11 @@ function App() {
 
             <button
               onClick={clearHistory}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-themeTextSecondary hover:text-rose-500 hover:bg-rose-500/10 border border-themeBorder/50 hover:border-rose-500/20 transition-all text-xs font-semibold"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-themeTextSecondary hover:text-rose-500 hover:bg-rose-500/10 border border-themeBorder/50 hover:border-rose-500/30 transition-all text-xs font-semibold"
               title="Clear all messages"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Clear History</span>
+              <span className="hidden sm:inline">Purge DB</span>
             </button>
           </div>
         </header>
@@ -655,10 +655,10 @@ function App() {
               >
                 {/* Avatar Icon */}
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
+                  className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg ${
                     message.role === 'user'
-                      ? 'bg-themeAccent text-white border border-themeAccent/20'
-                      : 'bg-themeCard border border-themeBorder text-themeAccent'
+                      ? 'bg-themeAccent/20 text-themeAccent border border-themeAccent/40 shadow-[0_0_10px_rgba(56,189,248,0.2)]'
+                      : 'bg-themeCard/80 border border-themeBorder text-themeAccent shadow-[0_0_10px_rgba(0,0,0,0.2)] backdrop-blur-md'
                   }`}
                 >
                   {message.role === 'user' ? (
@@ -671,10 +671,10 @@ function App() {
                 {/* Message Bubble wrapper */}
                 <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} space-y-1 w-full`}>
                   <div
-                    className={`px-5 py-3 rounded-2xl shadow-sm text-sm leading-relaxed border ${
+                    className={`px-5 py-3 rounded-[2rem] shadow-sm text-sm leading-relaxed border ${
                       message.role === 'user'
-                        ? 'bg-themeAccent border-themeAccent text-white rounded-tr-none'
-                        : 'bg-themeCard border-themeBorder/80 text-themeTextPrimary rounded-tl-none'
+                        ? 'bg-themeAccent/15 border-themeAccent/30 text-themeTextPrimary rounded-tr-sm shadow-[0_0_15px_rgba(56,189,248,0.1)] backdrop-blur-md'
+                        : 'bg-themeCard/60 border-themeBorder/60 text-themeTextPrimary rounded-tl-sm backdrop-blur-md shadow-lg'
                     }`}
                   >
                     {renderMessageContent(message.content, message.id)}
@@ -706,16 +706,16 @@ function App() {
             {/* Loading / Typing Indicator */}
             {isLoading && (
               <div className="flex items-start gap-3.5 self-start max-w-[85%]">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-themeCard border border-themeBorder text-themeAccent">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-themeCard/80 border border-themeBorder text-themeAccent shadow-[0_0_10px_rgba(0,0,0,0.2)] backdrop-blur-md">
                   <Bot className="w-4.5 h-4.5 animate-pulse" />
                 </div>
                 <div className="flex flex-col items-start space-y-1">
-                  <div className="px-5 py-4 rounded-2xl rounded-tl-none bg-themeCard border border-themeBorder/80 text-themeTextSecondary">
+                  <div className="px-5 py-4 rounded-[2rem] rounded-tl-sm bg-themeCard/60 border border-themeBorder/60 text-themeTextSecondary backdrop-blur-md shadow-lg">
                     <div className="flex items-center space-x-2">
-                      <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                      <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce"></div>
-                      <span className="text-xs text-themeTextSecondary/80 ml-2 select-none">Searching Pinecone & BM25 index...</span>
+                      <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.3s] shadow-[0_0_8px_rgba(56,189,248,0.5)]"></div>
+                      <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce [animation-delay:-0.15s] shadow-[0_0_8px_rgba(56,189,248,0.5)]"></div>
+                      <div className="w-2.5 h-2.5 bg-themeAccent rounded-full animate-bounce shadow-[0_0_8px_rgba(56,189,248,0.5)]"></div>
+                      <span className="text-xs text-themeAccent/80 ml-2 select-none uppercase tracking-widest font-bold">Querying Data...</span>
                     </div>
                   </div>
                 </div>
@@ -727,7 +727,7 @@ function App() {
         </main>
 
         {/* Input box section */}
-        <footer className="flex-shrink-0 bg-themeSidebar/40 border-t border-themeBorder/50 backdrop-blur py-5 px-4 md:px-8">
+        <footer className="flex-shrink-0 bg-themeSidebar/40 border-t border-themeBorder/30 backdrop-blur-md py-5 px-4 md:px-8">
           <div className="max-w-3xl mx-auto w-full flex flex-col space-y-4">
             
             {/* Quick Prompt Cards */}
@@ -747,7 +747,7 @@ function App() {
                           textareaRef.current.focus();
                         }
                       }}
-                      className="text-left px-3.5 py-2.5 rounded-xl bg-themeCard border border-themeBorder/40 text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeSidebar hover:border-themeBorder transition-all duration-200 text-xs flex items-center justify-between group"
+                      className="text-left px-4 py-3 rounded-[1.5rem] bg-themeCard/60 border border-themeBorder/40 text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeSidebar/80 hover:border-themeAccent/40 transition-all duration-300 text-xs flex items-center justify-between group backdrop-blur-sm"
                     >
                       <span className="truncate">{prompt}</span>
                       <MessageSquare className="w-3.5 h-3.5 text-themeTextSecondary group-hover:text-themeAccent transition-colors flex-shrink-0 ml-2" />
@@ -767,7 +767,7 @@ function App() {
 
             {/* Input Form */}
             <form onSubmit={onSubmit} className="relative flex items-end gap-2.5">
-              <div className="relative flex-1 bg-themeCard border border-themeBorder focus-within:border-themeAccent/80 focus-within:ring-2 focus-within:ring-themeAccent/15 rounded-2xl transition-all duration-150 overflow-hidden flex flex-col px-4 py-3">
+              <div className="relative flex-1 bg-themeCard/60 backdrop-blur-xl border border-themeBorder focus-within:border-themeAccent/80 focus-within:ring-2 focus-within:ring-themeAccent/20 focus-within:shadow-[0_0_20px_rgba(56,189,248,0.15)] rounded-[2rem] transition-all duration-300 overflow-hidden flex flex-col px-5 py-3">
                 
                 {/* Uploaded File Badge */}
                 {uploadedFile && (
@@ -818,7 +818,7 @@ function App() {
                     type="button"
                     disabled={isUploading || isLoading}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-shrink-0 w-8 h-8 rounded-lg bg-themeBg border border-themeBorder hover:border-themeAccent/50 text-themeTextSecondary hover:text-themeTextPrimary flex items-center justify-center transition-colors mb-0.5"
+                    className="flex-shrink-0 w-8 h-8 rounded-full bg-themeBg/80 border border-themeBorder hover:border-themeAccent/50 text-themeTextSecondary hover:text-themeAccent flex items-center justify-center transition-all hover:shadow-[0_0_10px_rgba(56,189,248,0.2)] mb-0.5"
                     title="Upload PDF document"
                   >
                     <Plus className="w-4 h-4" />
@@ -835,10 +835,10 @@ function App() {
                     value={input}
                     onChange={handleTextareaChange}
                     onKeyDown={handleKeyDown}
-                    placeholder={uploadedFile ? `Ask a question about ${uploadedFile.filename}...` : "Ask a placement prep question or paste code..."}
+                    placeholder={uploadedFile ? `QUERY ${uploadedFile.filename}...` : "INPUT QUERY OR CODE..."}
                     rows={1}
                     disabled={isLoading}
-                    className="w-full bg-transparent border-0 ring-0 focus:ring-0 outline-none resize-none text-sm text-themeTextPrimary placeholder-themeTextSecondary/60 py-0.5 max-h-[160px] min-h-[24px]"
+                    className="w-full bg-transparent border-0 ring-0 focus:ring-0 outline-none resize-none text-sm text-themeTextPrimary placeholder-themeTextSecondary/60 py-0.5 max-h-[160px] min-h-[24px] uppercase tracking-wider font-semibold"
                   />
                 </div>
               </div>
@@ -846,7 +846,7 @@ function App() {
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="flex-shrink-0 w-12 h-12 rounded-2xl bg-themeAccent hover:bg-themeAccentHover disabled:bg-themeCard disabled:text-themeTextSecondary/40 disabled:border-themeBorder/50 text-white flex items-center justify-center shadow-lg shadow-themeAccent/10 hover:shadow-themeAccent/25 border border-themeAccent/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-100"
+                className="flex-shrink-0 w-12 h-12 rounded-full bg-themeAccent/20 hover:bg-themeAccent/30 disabled:bg-themeCard/40 disabled:text-themeTextSecondary/40 disabled:border-themeBorder/30 text-themeAccent flex items-center justify-center border border-themeAccent/40 hover:border-themeAccent hover:shadow-[0_0_15px_rgba(56,189,248,0.4)] disabled:shadow-none hover:scale-[1.05] active:scale-[0.95] transition-all duration-300 backdrop-blur-md"
               >
                 {isLoading ? (
                   <RefreshCw className="w-5 h-5 animate-spin" />

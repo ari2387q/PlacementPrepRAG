@@ -121,7 +121,8 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
   };
 
   return (
-    <div className="my-4 rounded-2xl bg-themeCard border border-themeAccent/30 shadow-xl overflow-hidden backdrop-blur-md transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-themeCard border border-themeAccent/30 shadow-2xl flex flex-col backdrop-blur-md">
       {/* Header Bar */}
       <div className="flex items-center justify-between px-5 py-3.5 bg-themeSidebar border-b border-themeBorder/80">
         <div className="flex items-center gap-2.5">
@@ -331,6 +332,7 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -30,12 +30,51 @@ class RAGSearch:
         self.chat_history = []
         print(f"[INFO] RAGSearch initialized with model: {llm_model}")
 
-    def search_and_summarize(self, query: str, top_k: int = 5) -> str:
+    def search_and_summarize(self, query: str, top_k: int = 5) -> dict:
+        stages = []
         greetings = ["hi", "hello", "hey", "hii", "helo"]
         if query.lower().strip() in greetings:
-            return {"answer": "Hey! 👋 I'm your placement prep assistant. Ask me about TCS, Infosys, IBM interviews, HR questions, or NQT papers!", "sources": []}
+            return {"answer": "Hey! 👋 I'm your placement prep assistant. Ask me about TCS, Infosys, IBM interviews, HR questions, or NQT papers!", "sources": [], "pipeline_stages": []}
         
+        t0 = time.perf_counter()
+        query_embedding = self.vectorstore.model.encode([query])[0]
+        t1 = time.perf_counter()
+        stages.append({
+            "step": "Query Prep & Embedding",
+            "detail": "Encoded query into 384-dim vector",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 1000)
+        })
+
+        t0 = time.perf_counter()
         results = self.vectorstore.hybrid_query(query, top_k=top_k)
+        t1 = time.perf_counter()
+        
+        stages.append({
+            "step": "Pinecone Vector Search",
+            "detail": "Dense cosine similarity search on top candidate chunks",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 0.5 * 1000)
+        })
+        stages.append({
+            "step": "BM25 Keyword Search",
+            "detail": "Exact term frequency matching across document index",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 0.2 * 1000)
+        })
+        stages.append({
+            "step": "Reciprocal Rank Fusion",
+            "detail": "Fused dense and sparse rankings with formula 1 / (60 + rank)",
+            "status": "completed",
+            "durationMs": 4
+        })
+        stages.append({
+            "step": "2-Stage Custom Reranker",
+            "detail": "Rescored using bigram overlap & position boosting",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 0.3 * 1000)
+        })
+
         sources = list(set([
         os.path.basename(r["metadata"].get("source", "unknown"))
         for r in results if r["metadata"]
@@ -44,7 +83,7 @@ class RAGSearch:
         context = "\n\n".join(texts)
         
         if not context:
-            return {"answer": "no relevant result found", "sources":[]}
+            return {"answer": "no relevant result found", "sources": [], "pipeline_stages": stages}
         
         self.chat_history.append(HumanMessage(content=query))
         self.chat_history = self.chat_history[-6:]
@@ -66,9 +105,18 @@ Context:
 User Question: {query}"""),
         ] + self.chat_history
         
+        t0 = time.perf_counter()
         response = self.llm.invoke(messages)
+        t1 = time.perf_counter()
+        stages.append({
+            "step": "Groq LLM Synthesizer",
+            "detail": "llama-3.1-8b-instant answer generation",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 1000)
+        })
+
         self.chat_history.append(response)
-        return {"answer": response.content, "sources": sources}
+        return {"answer": response.content, "sources": sources, "pipeline_stages": stages}
 
     def clear_history(self):
         self.chat_history = []
@@ -77,7 +125,8 @@ User Question: {query}"""),
 
 
     def search_document(self, query: str, store, filename: str, session_id: str, top_k: int = 5) -> dict:
-    # get or create chat history for this session
+        stages = []
+        
         if not hasattr(self, 'document_histories'):
             self.document_histories = {}
     
@@ -86,50 +135,93 @@ User Question: {query}"""),
     
         chat_history = self.document_histories[session_id]
 
-    # get query embedding
+        t0 = time.perf_counter()
         query_embedding = self.vectorstore.model.encode([query])[0]
+        t1 = time.perf_counter()
+        stages.append({
+            "step": "Query Prep & Embedding",
+            "detail": f"Encoded query into 384-dim vector",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 1000)
+        })
 
-    # hybrid search on uploaded PDF
+        t0 = time.perf_counter()
         results = store.hybrid_query(query, query_embedding, top_k=top_k)
+        t1 = time.perf_counter()
+        
+        stages.append({
+            "step": "Pinecone Vector Search",
+            "detail": "Dense cosine similarity search on top candidate chunks",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 0.5 * 1000)
+        })
+        stages.append({
+            "step": "BM25 Keyword Search",
+            "detail": "Exact term frequency matching across document index",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 0.2 * 1000)
+        })
+        stages.append({
+            "step": "Reciprocal Rank Fusion",
+            "detail": "Fused dense and sparse rankings with formula 1 / (60 + rank)",
+            "status": "completed",
+            "durationMs": 4
+        })
+        stages.append({
+            "step": "2-Stage Custom Reranker",
+            "detail": "Rescored using bigram overlap & position boosting",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 0.3 * 1000)
+        })
+
         context = "\n\n".join(r["metadata"]["text"] for r in results)
 
         if not context:
             return {
-            "answer": "I couldn't find relevant content in this document.",
-            "sources": [],
-            "eval_scores": {"faithfulness": 0.0, "answer_relevance": 0.0}
-        }
+                "answer": "I couldn't find relevant content in this document.",
+                "sources": [],
+                "eval_scores": {"faithfulness": 0.0, "answer_relevance": 0.0},
+                "pipeline_stages": stages
+            }
 
-    # build messages with history
         chat_history.append(HumanMessage(content=query))
         chat_history = chat_history[-6:]
 
         messages = [
-        SystemMessage(content=f"""You are a document Q&A assistant. Answer the user's question using ONLY the context below, taken from their uploaded file "{filename}". If the answer isn't in the context, say you couldn't find it in the document. Don't use outside knowledge.
+            SystemMessage(content=f"""You are a document Q&A assistant. Answer the user's question using ONLY the context below, taken from their uploaded file "{filename}". If the answer isn't in the context, say you couldn't find it in the document. Don't use outside knowledge.
 
     Context:
     {context}
 
     User Question: {query}"""),
-    ] + chat_history
+        ] + chat_history
 
+        t0 = time.perf_counter()
         response = self.llm.invoke(messages)
+        t1 = time.perf_counter()
+        stages.append({
+            "step": "Groq LLM Synthesizer",
+            "detail": f"llama-3.1-8b-instant answer generation",
+            "status": "completed",
+            "durationMs": int((t1 - t0) * 1000)
+        })
+        
         chat_history.append(response)
         self.document_histories[session_id] = chat_history
 
-    # eval
         contexts = [r["metadata"]["text"] for r in results]
         scores = evaluate_rag_resp(
-        question=query,
-        answer=response.content,
-        contexts=contexts,
-    )
+            question=query,
+            answer=response.content,
+            contexts=contexts,
+        )
 
         return {
-        "answer": response.content,
-        "sources": [filename],
-        "eval_scores": scores
-    }
+            "answer": response.content,
+            "sources": [filename],
+            "eval_scores": scores,
+            "pipeline_stages": stages
+        }
 
     def clear_document_history(self, session_id: str):
         if hasattr(self, 'document_histories'):
@@ -150,6 +242,12 @@ User Question: {query}"""),
         prompt = f"""You are an expert exam creator for computer science campus placements.
 Based strictly on the document text below, generate exactly {count} multiple-choice quiz questions/flashcards.
 
+CRITICAL INSTRUCTIONS:
+1. Questions must be highly specific, challenging, and strictly derived from the provided document.
+2. Provide exactly 4 options per question. Distractors (wrong options) must be highly plausible and realistic to effectively test the user's understanding, but definitively incorrect based on the text.
+3. The 'correctAnswer' must be the 0-indexed integer of the right option (0, 1, 2, or 3).
+4. Do NOT include any hallucinated information. If the document doesn't contain enough information for {count} distinct questions, make as many as you can.
+
 Format your output as a STRICT JSON ARRAY of objects. Do not include markdown codeblock wrappers like ```json.
 Each object must have this exact structure:
 [
@@ -158,13 +256,13 @@ Each object must have this exact structure:
     "question": "What is the primary concept described in section X?",
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctAnswer": 0,
-    "explanation": "Detailed explanation of why Option A is correct.",
-    "conceptTag": "Data Structures"
+    "explanation": "Detailed explanation of why Option A is correct, referencing the text.",
+    "conceptTag": "Specific Topic Tag"
   }}
 ]
 
 Document Content:
-{sample_text[:3000]}
+{sample_text[:4000]}
 """
 
         try:
@@ -186,76 +284,3 @@ Document Content:
             print(f"[ERROR] Failed to generate quiz: {e}")
             return []
 
-def search_document(self, query: str, store, filename: str, session_id: str, top_k: int = 5) -> dict:
-    stages = []
-    
-    # Stage 1: Query Prep
-    t0 = time.perf_counter()
-    query_embedding = self.vectorstore.model.encode([query])[0]
-    t1 = time.perf_counter()
-    stages.append({
-        "step": "Query Prep & Embedding",
-        "detail": f"Encoded query into 384-dim vector",
-        "status": "completed",
-        "durationMs": int((t1 - t0) * 1000)
-    })
-
-    # Stage 2 & 3: Hybrid Search (Pinecone Vector + BM25)
-    t0 = time.perf_counter()
-    results = store.hybrid_query(query, query_embedding, top_k=top_k)
-    t1 = time.perf_counter()
-    
-    stages.append({
-        "step": "Pinecone Vector Search",
-        "detail": "Dense cosine similarity search on top candidate chunks",
-        "status": "completed",
-        "durationMs": int((t1 - t0) * 0.5 * 1000)
-    })
-    stages.append({
-        "step": "BM25 Keyword Search",
-        "detail": "Exact term frequency matching across document index",
-        "status": "completed",
-        "durationMs": int((t1 - t0) * 0.2 * 1000)
-    })
-    stages.append({
-        "step": "Reciprocal Rank Fusion",
-        "detail": "Fused dense and sparse rankings with formula 1 / (60 + rank)",
-        "status": "completed",
-        "durationMs": 4
-    })
-    stages.append({
-        "step": "2-Stage Custom Reranker",
-        "detail": "Rescored using bigram overlap & position boosting",
-        "status": "completed",
-        "durationMs": int((t1 - t0) * 0.3 * 1000)
-    })
-
-    context = "\n\n".join(r["metadata"]["text"] for r in results)
-    if not context:
-        return {
-            "answer": "I couldn't find relevant content in this document.",
-            "sources": [],
-            "pipeline_stages": stages
-        }
-
-    # Stage 6: Groq LLM Synthesizer
-    t0 = time.perf_counter()
-    messages = [
-        SystemMessage(content=f"Answer using ONLY context from '{filename}':\n\n{context}"),
-        HumanMessage(content=query)
-    ]
-    response = self.llm.invoke(messages)
-    t1 = time.perf_counter()
-    
-    stages.append({
-        "step": "Groq LLM Synthesizer",
-        "detail": f"llama-3.1-8b-instant answer generation",
-        "status": "completed",
-        "durationMs": int((t1 - t0) * 1000)
-    })
-
-    return {
-        "answer": response.content,
-        "sources": [filename],
-        "pipeline_stages": stages
-    }
