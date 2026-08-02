@@ -29,6 +29,7 @@ A pinecone-indexed retrieval v1 of this project also exists, wherein data from c
 - **Session Management** — uploaded document sessions expire after 2 hours, auto-cleaned
 - **Dark Theme Chat UI** — React + Vite + TypeScript frontend with code block rendering, copy buttons, and source badges
 - **Deployed** — FastAPI on Render, React on Vercel, vectors on Pinecone cloud
+- **CI Pipeline** — automated code quality checks (Ruff, ESLint, TypeScript), backend tests (pytest), and frontend builds via GitHub Actions
 
 ---
 
