@@ -1,13 +1,14 @@
-import os
-from dotenv import load_dotenv
-from src.data_loader import load_all_documents
-from langchain_groq import ChatGroq
-from langchain_core.messages import HumanMessage, SystemMessage
-from src.vectorstore import PineconeVectorStore
-from src.eval import evaluate_rag_resp
-import time
 import json
-from langchain_core.messages import SystemMessage, HumanMessage
+import os
+import time
+
+from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_groq import ChatGroq
+
+from src.eval import evaluate_rag_resp
+from src.vectorstore import PineconeVectorStore
+
 load_dotenv()
 
 class RAGSearch:
@@ -37,7 +38,7 @@ class RAGSearch:
             return {"answer": "Hey! 👋 I'm your placement prep assistant. Ask me about TCS, Infosys, IBM interviews, HR questions, or NQT papers!", "sources": [], "pipeline_stages": []}
         
         t0 = time.perf_counter()
-        query_embedding = self.vectorstore.model.encode([query])[0]
+        
         t1 = time.perf_counter()
         stages.append({
             "step": "Query Prep & Embedding",
@@ -75,10 +76,10 @@ class RAGSearch:
             "durationMs": int((t1 - t0) * 0.3 * 1000)
         })
 
-        sources = list(set([
+        sources = list({
         os.path.basename(r["metadata"].get("source", "unknown"))
         for r in results if r["metadata"]
-        ]))
+        })
         texts = [r["metadata"].get("text", "") for r in results if r["metadata"]]
         context = "\n\n".join(texts)
         
@@ -140,7 +141,7 @@ User Question: {query}"""),
         t1 = time.perf_counter()
         stages.append({
             "step": "Query Prep & Embedding",
-            "detail": f"Encoded query into 384-dim vector",
+            "detail": "Encoded query into 384-dim vector",
             "status": "completed",
             "durationMs": int((t1 - t0) * 1000)
         })
@@ -201,7 +202,7 @@ User Question: {query}"""),
         t1 = time.perf_counter()
         stages.append({
             "step": "Groq LLM Synthesizer",
-            "detail": f"llama-3.1-8b-instant answer generation",
+            "detail": "llama-3.1-8b-instant answer generation",
             "status": "completed",
             "durationMs": int((t1 - t0) * 1000)
         })
@@ -271,16 +272,13 @@ Document Content:
             
             # Clean response text if LLM included backticks
             cleaned_content = response.content.strip()
-            if cleaned_content.startswith("```json"):
-                cleaned_content = cleaned_content[7:]
-            if cleaned_content.startswith("```"):
-                cleaned_content = cleaned_content[3:]
-            if cleaned_content.endswith("```"):
-                cleaned_content = cleaned_content[:-3]
+            cleaned_content = cleaned_content.removeprefix("```json")
+            cleaned_content = cleaned_content.removeprefix("```")
+            cleaned_content = cleaned_content.removesuffix("```")
                 
             quiz_data = json.loads(cleaned_content.strip())
             return quiz_data
-        except Exception as e:
+        except json.JSONDecodeError as e:
             print(f"[ERROR] Failed to generate quiz: {e}")
             return []
 

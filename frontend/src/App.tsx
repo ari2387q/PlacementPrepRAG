@@ -31,6 +31,7 @@ interface Message {
   content: string;
   timestamp: string;
   sources?: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pipelineStages?: any[];
 }
 
@@ -44,12 +45,29 @@ const PRESET_PROMPTS = [
 type Theme = 'slate' | 'light' | 'cyberpunk' | 'emerald';
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const savedChat = localStorage.getItem('placement_prep_chat_history');
+    if (savedChat) {
+      try {
+        return JSON.parse(savedChat);
+      } catch (e) {
+        console.error("Failed to parse chat history", e);
+      }
+    }
+    return [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: "SYSTEM ONLINE. KNOWLEDGE BASE LOADED.\n\nReady for query input.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ];
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>('slate');
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('placement_prep_app_theme') as Theme) || 'slate');
   const [uploadedFile, setUploadedFile] = useState<{ sessionId: string; filename: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
@@ -66,37 +84,17 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mainChatRef = useRef<HTMLDivElement>(null);
 
-  // Load chat history & theme on mount
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('placement_prep_app_theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
 
-    const savedChat = localStorage.getItem('placement_prep_chat_history');
-    if (savedChat) {
-      try {
-        setMessages(JSON.parse(savedChat));
-      } catch (e) {
-        console.error("Failed to parse chat history", e);
-      }
-    } else {
-      setMessages([
-        {
-          id: 'welcome',
-          role: 'assistant',
-          content: "SYSTEM ONLINE. KNOWLEDGE BASE LOADED.\n\nReady for query input.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    }
-  }, []);
 
   // Update body class for themes
   useEffect(() => {
     document.body.className = `theme-${theme}`;
     localStorage.setItem('placement_prep_app_theme', theme);
   }, [theme]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // Save chat history on change
   useEffect(() => {
@@ -107,10 +105,6 @@ function App() {
     }
     scrollToBottom();
   }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   const clearHistory = async () => {
     if (!window.confirm("Are you sure you want to clear your chat history?")) {
@@ -201,7 +195,7 @@ function App() {
           handleSendMessage(textToDispatch, newUploaded);
         }, 150);
       }
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error(err);
       setError(err.message || "Failed to upload file.");
       setPendingPrompt(null);
@@ -301,7 +295,7 @@ function App() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error(err);
       setError("Unable to connect to the backend server.");
       
@@ -339,7 +333,7 @@ function App() {
       }
 
       setQuizItems(data.quiz_items);
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       setQuizItems([]);
       setQuizError(err?.message || 'Failed to generate quiz items.');
     } finally {

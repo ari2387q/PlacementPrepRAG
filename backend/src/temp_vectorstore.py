@@ -1,10 +1,13 @@
-import numpy as np
-from src.vectorstore import BM25
 import os
 import tempfile
 import uuid
+
+import numpy as np
 from langchain_community.document_loaders import PyPDFLoader
+
 from src.embedding import EmbeddingPipeline
+from src.vectorstore import BM25
+
 
 class TempDocStore:
     """In-memory store for a single uploaded document. No Pinecone, no persistence."""
@@ -107,8 +110,11 @@ class TempDocStore:
         try:
             print("[DEBUG] Writing file to disk...")
             t = time.time()
-            with open(tmp_path, "wb") as f:
-                f.write(await file.read())
+            file_data = await file.read()
+            def write_file():
+                with open(tmp_path, "wb") as f:
+                    f.write(file_data)
+            await asyncio.to_thread(write_file)
             print(f"[DEBUG] File written in {time.time()-t:.2f}s")
 
             print("[DEBUG] Loading PDF...")

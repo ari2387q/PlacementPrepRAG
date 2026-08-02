@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Sparkles, HelpCircle, Layers, CheckCircle2, XCircle, RotateCcw, ChevronRight, ChevronLeft, Eye, X, BookOpen } from 'lucide-react';
 
 export interface QuizItem {
@@ -78,12 +78,15 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
   const [isFlipped, setIsFlipped] = useState(false);
   const quizItems = items && items.length > 0 ? items : DEFAULT_QUIZ_ITEMS;
 
-  useEffect(() => {
+  const [prevItems, setPrevItems] = useState(items);
+
+  if (items !== prevItems) {
+    setPrevItems(items);
     setCurrentIndex(0);
     setScore(0);
     setAnsweredMap({});
     setIsFlipped(false);
-  }, [items]);
+  }
 
   const currentItem = quizItems[currentIndex];
 

@@ -1,14 +1,13 @@
-import os
-from fastapi import FastAPI,UploadFile,File,HTTPException
+import uuid
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
+
+# ruff: noqa: B008
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
-from datetime import datetime,timedelta,timezone
-import tempfile
-import uuid
-from langchain_core.messages import SystemMessage
-from src.temp_vectorstore import TempDocStore
 
+from src.temp_vectorstore import TempDocStore
 
 rag=None
 document_sessions: dict={}
@@ -32,7 +31,7 @@ app.add_middleware(
 )
 #for session storage expiration clearage
 def cleanup_expired_sessions():
-    now=datetime.now(timezone.utc)
+    now=datetime.now(UTC)
     expired=[sid for sid,data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
     for sid in expired:
         del document_sessions[sid]
@@ -76,7 +75,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     session_id = str(uuid.uuid4())
     document_sessions[session_id] = {
         "store": store,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
         "filename": file.filename,
     }
 

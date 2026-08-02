@@ -1,11 +1,13 @@
-import os
-import numpy as np
-from typing import List, Any
-from sentence_transformers import SentenceTransformer
-from src.embedding import EmbeddingPipeline
-from pinecone import Pinecone, ServerlessSpec
 import math
+import os
 from collections import Counter
+from typing import Any
+
+from pinecone import Pinecone, ServerlessSpec
+from sentence_transformers import SentenceTransformer
+
+from src.embedding import EmbeddingPipeline
+
 
 class BM25:
     def __init__(self, k1=1.2, b=0.75):
@@ -86,7 +88,7 @@ class PineconeVectorStore:
         self.index = self.pc.Index(self.index_name)
         print(f"[INFO] Connected to Pinecone index: {self.index_name}")
 
-    def build_from_documents(self, documents: List[Any]):
+    def build_from_documents(self, documents: list[Any]):
         #debugging
         """print("DOCUMENT COUNT =", len(documents))
         print("FIRST DOC =", documents[:1])"""
@@ -99,7 +101,7 @@ class PineconeVectorStore:
         vectors = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             source_path = chunk.metadata.get("source", "unknown")
-            source_file = os.path.basename(source_path).lower()
+            
 
 
             vectors.append({

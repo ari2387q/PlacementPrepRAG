@@ -1,11 +1,10 @@
 from pathlib import Path
-from typing import List,Any
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.document_loaders import Docx2txtLoader
-from langchain_community.document_loaders.excel import UnstructuredExcelLoader
-from langchain_community.document_loaders import JSONLoader
+from typing import Any
 
-def load_all_documents(data_dir:str)-> List[Any]:
+from langchain_community.document_loaders import PyPDFLoader
+
+
+def load_all_documents(data_dir:str)-> list[Any]:
     data_path=Path(data_dir).resolve()
     print(f"[DEBUG] Data path: {data_path}")
 
@@ -22,6 +21,6 @@ def load_all_documents(data_dir:str)-> List[Any]:
             print(f"{len(loaded)} files are loaded from the directory")
             documents.extend(loaded)
 
-        except Exception as e:
-            print(f"failed to load the pdf")
+        except Exception as e:  # noqa: BLE001
+            print(f"Failed to load document: {e}")
     return documents
