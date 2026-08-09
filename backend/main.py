@@ -124,7 +124,7 @@ class HistorySyncRequest(BaseModel):
 
 @app.get("/history/{email}")
 def get_user_history(email: str):
-    if not chat_collection:
+    if chat_collection is None:
         return {"messages": []}
     
     user_record = chat_collection.find_one({"email": email}, {"_id": 0, "messages": 1})
@@ -134,7 +134,7 @@ def get_user_history(email: str):
 
 @app.post("/history/sync")
 def sync_user_history(request: HistorySyncRequest):
-    if not chat_collection:
+    if chat_collection is None:
         return {"status": "mongodb not configured"}
         
     chat_collection.update_one(
