@@ -1,18 +1,23 @@
+import json
+import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from typing import AsyncGenerator
 
 # ruff: noqa: B008
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from src.temp_vectorstore import TempDocStore
 
-rag=None
-document_sessions: dict={}
+rag = None
+document_sessions: dict = {}
 document_chat_histories: dict = {}
-SESSION_TTL=timedelta(hours=2)
+SESSION_TTL = timedelta(hours=2)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,6 +25,7 @@ async def lifespan(app: FastAPI):
     from src.rag_search import RAGSearch
     rag = RAGSearch()
     yield
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -29,36 +35,104 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-#for session storage expiration clearage
+
+
+# Session expiry cleanup
 def cleanup_expired_sessions():
-    now=datetime.now(UTC)
-    expired=[sid for sid,data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
+    now = datetime.now(UTC)
+    expired = [sid for sid, data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
     for sid in expired:
         del document_sessions[sid]
-#for pinecone (v1)
+
+
+# ── Request/Response Models ────────────────────────────────────────────────────
 class QueryRequest(BaseModel):
-    query:str
-    top_k: int=5
-#a new classa
+    query: str
+    top_k: int = 5
+
+
 class DocumentQueryRequest(BaseModel):
     session_id: str
     query: str
     top_k: int = 5
-#below 3 functions remain same
+
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str
+
+
+# ── SSE Helper ────────────────────────────────────────────────────────────────
+def make_sse_generator(gen) -> AsyncGenerator[str, None]:
+    """Wraps a synchronous (event_type, data) generator into SSE-formatted strings."""
+    async def inner():
+        try:
+            for event_type, data in gen:
+                yield f"event: {event_type}\ndata: {data}\n\n"
+        except Exception as e:
+            error_payload = json.dumps({"error": str(e)})
+            yield f"event: error\ndata: {error_payload}\n\n"
+        finally:
+            yield "event: done\ndata: \n\n"
+    return inner()
+
+
+# ── Health ─────────────────────────────────────────────────────────────────────
 @app.get("/")
 def health():
     return {"status": "ok"}
-#for the pinecone (v1)
+
+
+# ── Standard (non-streaming) endpoints — kept for backward compat ──────────────
 @app.post("/query")
 def query(request: QueryRequest):
     results = rag.search_and_summarize(request.query, request.top_k)
     return {"answer": results["answer"], "sources": results["sources"], "pipeline_stages": results.get("pipeline_stages", [])}
+
 
 @app.post("/clear")
 def clear_history():
     rag.clear_history()
     return {"status": "history cleared"}
 
+
+# ── Streaming endpoints ────────────────────────────────────────────────────────
+@app.post("/query/stream")
+def query_stream(request: QueryRequest):
+    gen = rag.search_and_summarize_stream(request.query, request.top_k)
+    return StreamingResponse(
+        make_sse_generator(gen),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@app.post("/document/query/stream")
+def query_document_stream(request: DocumentQueryRequest):
+    session = document_sessions.get(request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+
+    gen = rag.search_document_stream(
+        query=request.query,
+        store=session["store"],
+        filename=session["filename"],
+        session_id=request.session_id,
+        top_k=request.top_k,
+    )
+    return StreamingResponse(
+        make_sse_generator(gen),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+# ── PDF Upload & Document Endpoints ────────────────────────────────────────────
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     cleanup_expired_sessions()
@@ -80,6 +154,8 @@ async def upload_pdf(file: UploadFile = File(...)):
     }
 
     return {"session_id": session_id, "filename": file.filename, "chunks": chunk_count}
+
+
 @app.post("/document/query")
 def query_document(request: DocumentQueryRequest):
     session = document_sessions.get(request.session_id)
@@ -91,24 +167,72 @@ def query_document(request: DocumentQueryRequest):
         store=session["store"],
         filename=session["filename"],
         session_id=request.session_id,
-        top_k=request.top_k
+        top_k=request.top_k,
     )
     return result
+
+
 @app.delete("/document/{session_id}")
-def delete_document_session(session_id:str):
-    document_sessions.pop(session_id,None)
+def delete_document_session(session_id: str):
+    document_sessions.pop(session_id, None)
     rag.clear_document_history(session_id)
-    return {"status":"session cleared"}
+    return {"status": "session cleared"}
+
 
 class QuizRequest(BaseModel):
     session_id: str
     count: int = 4
+
 
 @app.post("/document/generate-quiz")
 def generate_quiz(request: QuizRequest):
     session = document_sessions.get(request.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired")
-    
+
     quiz_items = rag.generate_quiz_from_store(session["store"], count=request.count)
     return {"quiz_items": quiz_items}
+
+
+# ── Google OAuth ───────────────────────────────────────────────────────────────
+@app.post("/auth/google")
+def google_auth(request: GoogleAuthRequest):
+    """Verify Google ID token and return user info."""
+    google_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+
+    if not google_client_id:
+        # Fallback: decode without verification if client ID not set yet
+        # (allows frontend to work while credentials are being configured)
+        import base64
+        import json as _json
+        try:
+            parts = request.id_token.split(".")
+            if len(parts) != 3:
+                raise HTTPException(status_code=400, detail="Invalid ID token format")
+            padding = 4 - len(parts[1]) % 4
+            padded = parts[1] + "=" * padding
+            payload = _json.loads(base64.urlsafe_b64decode(padded))
+            return {
+                "email": payload.get("email", ""),
+                "name": payload.get("name", ""),
+                "picture": payload.get("picture", ""),
+            }
+        except Exception:
+            raise HTTPException(status_code=400, detail="Failed to decode token")
+
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+
+        id_info = id_token.verify_oauth2_token(
+            request.id_token,
+            google_requests.Request(),
+            google_client_id,
+        )
+        return {
+            "email": id_info.get("email", ""),
+            "name": id_info.get("name", ""),
+            "picture": id_info.get("picture", ""),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {e}")

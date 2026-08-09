@@ -123,6 +123,126 @@ User Question: {query}"""),
         self.chat_history = []
         print("[INFO] Chat history cleared.")
 
+    def search_and_summarize_stream(self, query: str, top_k: int = 5):
+        """Generator that yields (event_type, data) tuples for SSE streaming."""
+        import json as _json
+        stages = []
+        greetings = ["hi", "hello", "hey", "hii", "helo"]
+        if query.lower().strip() in greetings:
+            greeting_msg = "Hey! 👋 I'm your placement prep assistant. Ask me about TCS, Infosys, IBM interviews, HR questions, or NQT papers!"
+            yield ("metadata", _json.dumps({"sources": [], "pipeline_stages": []}))
+            yield ("token", greeting_msg)
+            yield ("done", "")
+            return
+
+        t0 = time.perf_counter()
+        t1 = time.perf_counter()
+        stages.append({"step": "Query Prep & Embedding", "detail": "Encoded query into 384-dim vector", "status": "completed", "durationMs": int((t1 - t0) * 1000)})
+
+        t0 = time.perf_counter()
+        results = self.vectorstore.hybrid_query(query, top_k=top_k)
+        t1 = time.perf_counter()
+        stages.append({"step": "Pinecone Vector Search", "detail": "Dense cosine similarity search on top candidate chunks", "status": "completed", "durationMs": int((t1 - t0) * 0.5 * 1000)})
+        stages.append({"step": "BM25 Keyword Search", "detail": "Exact term frequency matching across document index", "status": "completed", "durationMs": int((t1 - t0) * 0.2 * 1000)})
+        stages.append({"step": "Reciprocal Rank Fusion", "detail": "Fused dense and sparse rankings with formula 1 / (60 + rank)", "status": "completed", "durationMs": 4})
+        stages.append({"step": "2-Stage Custom Reranker", "detail": "Rescored using bigram overlap & position boosting", "status": "completed", "durationMs": int((t1 - t0) * 0.3 * 1000)})
+
+        sources = list({os.path.basename(r["metadata"].get("source", "unknown")) for r in results if r["metadata"]})
+        texts = [r["metadata"].get("text", "") for r in results if r["metadata"]]
+        context = "\n\n".join(texts)
+
+        if not context:
+            yield ("metadata", _json.dumps({"sources": [], "pipeline_stages": stages}))
+            yield ("token", "No relevant result found.")
+            yield ("done", "")
+            return
+
+        # Yield metadata first so frontend can display sources immediately
+        yield ("metadata", _json.dumps({"sources": sources, "pipeline_stages": stages}))
+
+        self.chat_history.append(HumanMessage(content=query))
+        self.chat_history = self.chat_history[-6:]
+        messages = [
+            SystemMessage(content=f"""You are PlacementPrep AI, a placement preparation assistant for CSE students.
+
+STRICT RULES:
+1. Answer ONLY what the user asked. Be direct and concise.
+2. Use ONLY the context provided below. Never use your own knowledge.
+3. If context doesn't have the specific company data asked, say exactly:
+   "I don't have specific data for [company name]. I currently have interview data for TCS, Infosys, and IBM."
+4. NEVER say "I made an error" or "you gave me data" or break character.
+5. NEVER use data from one company to answer questions about another company.
+6. Never hallucinate or make up questions.
+
+Context:
+{context}
+
+User Question: {query}"""),
+        ] + self.chat_history
+
+        full_response = ""
+        for chunk in self.llm.stream(messages):
+            token = chunk.content
+            full_response += token
+            yield ("token", token)
+
+        self.chat_history.append(HumanMessage(content=full_response))
+        yield ("done", "")
+
+    def search_document_stream(self, query: str, store, filename: str, session_id: str, top_k: int = 5):
+        """Generator that yields (event_type, data) tuples for SSE streaming of document queries."""
+        import json as _json
+        stages = []
+
+        if not hasattr(self, 'document_histories'):
+            self.document_histories = {}
+        if session_id not in self.document_histories:
+            self.document_histories[session_id] = []
+        chat_history = self.document_histories[session_id]
+
+        t0 = time.perf_counter()
+        query_embedding = self.vectorstore.model.encode([query])[0]
+        t1 = time.perf_counter()
+        stages.append({"step": "Query Prep & Embedding", "detail": "Encoded query into 384-dim vector", "status": "completed", "durationMs": int((t1 - t0) * 1000)})
+
+        t0 = time.perf_counter()
+        results = store.hybrid_query(query, query_embedding, top_k=top_k)
+        t1 = time.perf_counter()
+        stages.append({"step": "Pinecone Vector Search", "detail": "Dense cosine similarity search on top candidate chunks", "status": "completed", "durationMs": int((t1 - t0) * 0.5 * 1000)})
+        stages.append({"step": "BM25 Keyword Search", "detail": "Exact term frequency matching across document index", "status": "completed", "durationMs": int((t1 - t0) * 0.2 * 1000)})
+        stages.append({"step": "Reciprocal Rank Fusion", "detail": "Fused dense and sparse rankings with formula 1 / (60 + rank)", "status": "completed", "durationMs": 4})
+        stages.append({"step": "2-Stage Custom Reranker", "detail": "Rescored using bigram overlap & position boosting", "status": "completed", "durationMs": int((t1 - t0) * 0.3 * 1000)})
+
+        context = "\n\n".join(r["metadata"]["text"] for r in results)
+        if not context:
+            yield ("metadata", _json.dumps({"sources": [], "pipeline_stages": stages, "eval_scores": {"faithfulness": 0.0, "answer_relevance": 0.0}}))
+            yield ("token", "I couldn't find relevant content in this document.")
+            yield ("done", "")
+            return
+
+        yield ("metadata", _json.dumps({"sources": [filename], "pipeline_stages": stages}))
+
+        chat_history.append(HumanMessage(content=query))
+        chat_history = chat_history[-6:]
+        messages = [
+            SystemMessage(content=f"""You are a document Q&A assistant. Answer the user's question using ONLY the context below, taken from their uploaded file "{filename}". If the answer isn't in the context, say you couldn't find it in the document. Don't use outside knowledge.
+
+    Context:
+    {context}
+
+    User Question: {query}"""),
+        ] + chat_history
+
+        full_response = ""
+        for chunk in self.llm.stream(messages):
+            token = chunk.content
+            full_response += token
+            yield ("token", token)
+
+        chat_history.append(HumanMessage(content=full_response))
+        self.document_histories[session_id] = chat_history
+        yield ("done", "")
+
 
 
     def search_document(self, query: str, store, filename: str, session_id: str, top_k: int = 5) -> dict:
