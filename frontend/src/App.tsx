@@ -116,17 +116,41 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Save chat history on change
+  // Sync to MongoDB on login
+  useEffect(() => {
+    if (user?.email) {
+      setIsLoading(true);
+      fetch(`${BASE_URL}/history/${user.email}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.messages && data.messages.length > 0) {
+            setMessages(data.messages);
+          }
+        })
+        .catch(err => console.error("Failed to fetch history", err))
+        .finally(() => setIsLoading(false));
+    }
+  }, [user?.email]);
+
+  // Save chat history on change (and sync to MongoDB)
   useEffect(() => {
     if (messages.length > 0) {
       // Don't persist streaming placeholders
       const toSave = messages.map(m => ({ ...m, isStreaming: false }));
       localStorage.setItem('placement_prep_chat_history', JSON.stringify(toSave));
+      
+      if (user?.email) {
+        fetch(`${BASE_URL}/history/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email, messages: toSave })
+        }).catch(err => console.error("Failed to sync history", err));
+      }
     } else {
       localStorage.removeItem('placement_prep_chat_history');
     }
     scrollToBottom();
-  }, [messages]);
+  }, [messages, user?.email]);
 
   // Ctrl+K to focus input
   useEffect(() => {
@@ -549,7 +573,10 @@ function App() {
         onClose={() => setShowAuthModal(false)}
         user={user}
         onLoginSuccess={login}
-        onLogout={logout}
+        onLogout={() => {
+          logout();
+          clearHistory();
+        }}
       />
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
@@ -595,10 +622,11 @@ function App() {
           </div>
 
           {/* Quick Prompts in Sidebar */}
-          <div className="space-y-2">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-themeTextSecondary flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-themeAccent" /> Quick Prompts
-            </span>
+          {messages.length > 1 && (
+            <div className="space-y-2">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-themeTextSecondary flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-themeAccent" /> Quick Prompts
+              </span>
             <div className="space-y-1.5">
               {PRESET_PROMPTS.map((prompt, idx) => (
                 <button
@@ -616,6 +644,7 @@ function App() {
               ))}
             </div>
           </div>
+          )}
 
           {/* Active Document Session */}
           {uploadedFile && (
@@ -1008,10 +1037,10 @@ function App() {
                     value={input}
                     onChange={handleTextareaChange}
                     onKeyDown={handleKeyDown}
-                    placeholder={uploadedFile ? `QUERY ${uploadedFile.filename}...` : "INPUT QUERY OR CODE..."}
+                    placeholder={uploadedFile ? `Query ${uploadedFile.filename}...` : "Input query or code..."}
                     rows={1}
                     disabled={isLoading}
-                    className="w-full bg-transparent border-0 ring-0 focus:ring-0 outline-none resize-none text-sm text-themeTextPrimary placeholder-themeTextSecondary/60 py-0.5 max-h-[160px] min-h-[24px] uppercase tracking-wider font-semibold"
+                    className="w-full bg-transparent border-0 ring-0 focus:ring-0 outline-none resize-none text-sm text-themeTextPrimary placeholder-themeTextSecondary/60 py-0.5 max-h-[160px] min-h-[24px] font-normal"
                   />
                 </div>
               </div>

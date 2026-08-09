@@ -14,6 +14,9 @@ from pydantic import BaseModel
 from src.temp_vectorstore import TempDocStore
 
 rag = None
+mongo_client = None
+db = None
+chat_collection = None
 document_sessions: dict = {}
 document_chat_histories: dict = {}
 SESSION_TTL = timedelta(hours=2)
@@ -21,10 +24,29 @@ SESSION_TTL = timedelta(hours=2)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global rag
+    global rag, mongo_client, db, chat_collection
     from src.rag_search import RAGSearch
     rag = RAGSearch()
+    
+    # Initialize MongoDB
+    mongo_uri = os.getenv("MONGODB_URI", "")
+    if mongo_uri:
+        try:
+            from pymongo import MongoClient
+            mongo_client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+            db = mongo_client["placement_prep"]
+            chat_collection = db["chat_history"]
+            print("[INFO] Connected to MongoDB")
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to MongoDB: {e}")
+            mongo_client = None
+    else:
+        print("[WARN] MONGODB_URI not set. Chat history will not be persisted to MongoDB.")
+        
     yield
+    
+    if mongo_client:
+        mongo_client.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -93,6 +115,35 @@ def query(request: QueryRequest):
 def clear_history():
     rag.clear_history()
     return {"status": "history cleared"}
+
+
+# ── MongoDB History Sync ───────────────────────────────────────────────────────
+class HistorySyncRequest(BaseModel):
+    email: str
+    messages: list[dict]
+
+@app.get("/history/{email}")
+def get_user_history(email: str):
+    if not chat_collection:
+        return {"messages": []}
+    
+    user_record = chat_collection.find_one({"email": email}, {"_id": 0, "messages": 1})
+    if user_record and "messages" in user_record:
+        return {"messages": user_record["messages"]}
+    return {"messages": []}
+
+@app.post("/history/sync")
+def sync_user_history(request: HistorySyncRequest):
+    if not chat_collection:
+        return {"status": "mongodb not configured"}
+        
+    chat_collection.update_one(
+        {"email": request.email},
+        {"$set": {"messages": request.messages, "updated_at": datetime.now(UTC)}},
+        upsert=True
+    )
+    return {"status": "synced"}
+
 
 
 # ── Streaming endpoints ────────────────────────────────────────────────────────
