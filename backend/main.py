@@ -250,7 +250,6 @@ def generate_quiz(request: QuizRequest):
 def google_auth(request: GoogleAuthRequest):
     """Verify Google ID token and return user info."""
     google_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-
     if not google_client_id:
         # Fallback: decode without verification if client ID not set yet
         # (allows frontend to work while credentials are being configured)
