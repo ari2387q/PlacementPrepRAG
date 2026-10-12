@@ -12,7 +12,7 @@ from src.vectorstore import PineconeVectorStore
 load_dotenv()
 
 class RAGSearch:
-    def __init__(self, embedding_model: str = "all-MiniLM-L6-v2", llm_model: str = "llama-3.1-8b-instant"):
+    def __init__(self, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", llm_model: str = None):
         self.vectorstore = PineconeVectorStore(embedding_model)
         
         # if self.vectorstore.is_empty():
@@ -26,8 +26,22 @@ class RAGSearch:
         #     print("[INFO] Pinecone index already has data, skipping build")
         # Load BM25 index from Pinecone chunks
         self.vectorstore.load_bm25_from_pinecone()
-        
-        self.llm = ChatGroq(api_key=os.getenv("GROQ"), model_name=llm_model)
+
+        # Resolve Groq API key — support both naming conventions
+        groq_api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ")
+        if not groq_api_key:
+            print("[ERROR] Groq API key not found. Set GROQ_API_KEY (or GROQ) in environment variables.")
+
+        # Allow model override via env var, fall back to a known-working model
+        if llm_model is None:
+            llm_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+        try:
+            self.llm = ChatGroq(api_key=groq_api_key, model_name=llm_model)
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize Groq LLM with model '{llm_model}': {e}")
+            raise
+
         self.chat_history = []
         print(f"[INFO] RAGSearch initialized with model: {llm_model}")
 
@@ -111,7 +125,7 @@ User Question: {query}"""),
         t1 = time.perf_counter()
         stages.append({
             "step": "Groq LLM Synthesizer",
-            "detail": "llama-3.1-8b-instant answer generation",
+            "detail": f"{self.llm.model_name} answer generation",
             "status": "completed",
             "durationMs": int((t1 - t0) * 1000)
         })
@@ -201,7 +215,7 @@ User Question: {query}"""),
         chat_history = self.document_histories[session_id]
 
         t0 = time.perf_counter()
-        query_embedding = self.vectorstore.model.encode([query])[0]
+        query_embedding = list(list(self.vectorstore.model.embed([query]))[0])
         t1 = time.perf_counter()
         stages.append({"step": "Query Prep & Embedding", "detail": "Encoded query into 384-dim vector", "status": "completed", "durationMs": int((t1 - t0) * 1000)})
 
@@ -257,7 +271,7 @@ User Question: {query}"""),
         chat_history = self.document_histories[session_id]
 
         t0 = time.perf_counter()
-        query_embedding = self.vectorstore.model.encode([query])[0]
+        query_embedding = list(list(self.vectorstore.model.embed([query]))[0])
         t1 = time.perf_counter()
         stages.append({
             "step": "Query Prep & Embedding",
@@ -322,7 +336,7 @@ User Question: {query}"""),
         t1 = time.perf_counter()
         stages.append({
             "step": "Groq LLM Synthesizer",
-            "detail": "llama-3.1-8b-instant answer generation",
+            "detail": f"{self.llm.model_name} answer generation",
             "status": "completed",
             "durationMs": int((t1 - t0) * 1000)
         })
@@ -399,6 +413,9 @@ Document Content:
             quiz_data = json.loads(cleaned_content.strip())
             return quiz_data
         except json.JSONDecodeError as e:
-            print(f"[ERROR] Failed to generate quiz: {e}")
+            print(f"[ERROR] Failed to parse quiz JSON: {e}")
             return []
+        except Exception as e:
+            print(f"[ERROR] LLM quiz generation call failed: {e}")
+            raise
 

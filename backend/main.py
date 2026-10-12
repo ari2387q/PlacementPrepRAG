@@ -6,9 +6,9 @@ from datetime import UTC, datetime, timedelta
 from typing import AsyncGenerator
 
 # ruff: noqa: B008
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from src.temp_vectorstore import TempDocStore
@@ -51,20 +51,60 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+ALLOWED_ORIGINS = [
+    "https://placement-prep-rag.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all handler so unhandled exceptions still return CORS headers.
+    Without this, a server crash returns a raw 500 with no CORS headers,
+    which browsers report as a CORS error — masking the real problem."""
+    origin = request.headers.get("origin", "")
+    cors_origin = origin if origin in ALLOWED_ORIGINS else ALLOWED_ORIGINS[0]
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+        headers={
+            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
+
+
 # Session expiry cleanup
+MAX_DOCUMENT_SESSIONS = 5
+
 def cleanup_expired_sessions():
+    import gc
     now = datetime.now(UTC)
     expired = [sid for sid, data in document_sessions.items() if now - data["created_at"] > SESSION_TTL]
     for sid in expired:
-        del document_sessions[sid]
+        document_sessions.pop(sid, None)
+        if rag and hasattr(rag, "clear_document_history"):
+            rag.clear_document_history(sid)
+
+    # If sessions exceed cap, evict oldest to avoid memory accumulation
+    if len(document_sessions) > MAX_DOCUMENT_SESSIONS:
+        sorted_sessions = sorted(document_sessions.items(), key=lambda item: item[1]["created_at"])
+        to_evict = sorted_sessions[:len(document_sessions) - MAX_DOCUMENT_SESSIONS]
+        for sid, _ in to_evict:
+            document_sessions.pop(sid, None)
+            if rag and hasattr(rag, "clear_document_history"):
+                rag.clear_document_history(sid)
+
+    gc.collect()
 
 
 # ── Request/Response Models ────────────────────────────────────────────────────
@@ -241,8 +281,12 @@ def generate_quiz(request: QuizRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired")
 
-    quiz_items = rag.generate_quiz_from_store(session["store"], count=request.count)
-    return {"quiz_items": quiz_items}
+    try:
+        quiz_items = rag.generate_quiz_from_store(session["store"], count=request.count)
+        return {"quiz_items": quiz_items}
+    except Exception as e:
+        print(f"[ERROR] generate_quiz failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Quiz generation failed: {str(e)}")
 
 
 # ── Google OAuth ───────────────────────────────────────────────────────────────
