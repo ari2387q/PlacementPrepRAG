@@ -12,7 +12,7 @@ from src.vectorstore import PineconeVectorStore
 load_dotenv()
 
 class RAGSearch:
-    def __init__(self, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", llm_model: str = None):
+    def __init__(self, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", llm_model: str = "openai/gpt-oss-20b"):
         self.vectorstore = PineconeVectorStore(embedding_model)
         
         # if self.vectorstore.is_empty():
@@ -32,9 +32,8 @@ class RAGSearch:
         if not groq_api_key:
             print("[ERROR] Groq API key not found. Set GROQ_API_KEY (or GROQ) in environment variables.")
 
-        # Allow model override via env var, fall back to a known-working model
-        if llm_model is None:
-            llm_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        # Hardcode model to openai/gpt-oss-20b (verified available on your Groq key)
+        llm_model = "openai/gpt-oss-20b"
 
         try:
             self.llm = ChatGroq(api_key=groq_api_key, model_name=llm_model)
