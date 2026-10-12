@@ -3,8 +3,8 @@ import os
 from collections import Counter
 from typing import Any
 
+from fastembed import TextEmbedding
 from pinecone import Pinecone, ServerlessSpec
-from sentence_transformers import SentenceTransformer
 
 from src.embedding import EmbeddingPipeline
 
@@ -61,13 +61,15 @@ class BM25:
         return scores[:top_k]
 
 class PineconeVectorStore:
-    def __init__(self, embedding_model: str = "all-MiniLM-L6-v2", chunk_size=1000, chunk_overlap=200):
+    def __init__(self, embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", chunk_size=1000, chunk_overlap=200):
+        if embedding_model == "all-MiniLM-L6-v2":
+            embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
         self.embedding_model = embedding_model
-        print("[DEBUG] About to load SentenceTransformer")
+        print("[DEBUG] Loading FastEmbed TextEmbedding (ONNX)...")
 
-        self.model = SentenceTransformer(embedding_model)
+        self.model = TextEmbedding(model_name=embedding_model)
 
-        print("[DEBUG] SentenceTransformer loaded successfully")
+        print("[DEBUG] FastEmbed model loaded successfully")
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.bm25 = BM25()
@@ -121,7 +123,7 @@ class PineconeVectorStore:
 
     def query(self, query_text: str, top_k: int = 5):
         print(f"[INFO] Querying Pinecone for: '{query_text}'")
-        query_emb = self.model.encode([query_text])[0].tolist()
+        query_emb = list(list(self.model.embed([query_text]))[0])
         results = self.index.query(vector=query_emb, top_k=top_k, include_metadata=True)
 
         return [
@@ -180,7 +182,7 @@ class PineconeVectorStore:
             filter_dict = {"company": {"$eq": "infosys"}}
 
     #Vector search: top 15
-        query_emb = self.model.encode([query_text])[0].tolist()
+        query_emb = list(list(self.model.embed([query_text]))[0])
         vector_results = self.index.query(
             vector=query_emb, top_k=top_k*3, include_metadata=True,filter=filter_dict
      )

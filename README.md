@@ -93,7 +93,7 @@ flowchart TB
 | **Frontend** | React 18, Vite, TypeScript, Tailwind CSS, Lucide Icons |
 | **Backend** | FastAPI, Python 3.12, Uvicorn, Pydantic |
 | **Databases** | Pinecone (Vector), MongoDB Atlas (State/History) |
-| **AI / ML** | Groq API (`llama-3.1-8b-instant`), Sentence Transformers (`all-MiniLM-L6-v2`) |
+| **AI / ML** | Groq API (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`), FastEmbed ONNX (`sentence-transformers/all-MiniLM-L6-v2`) |
 | **Auth** | Google Identity Services (GIS), `google-auth` |
 | **Deployment** | Vercel (Frontend), Render (Backend), GitHub Actions (CI) |
 
@@ -121,6 +121,7 @@ pip install -r requirements.txt
 
 # Create .env file
 echo 'GROQ="your_groq_api_key"' > .env
+echo 'GROQ_MODEL="llama-3.3-70b-versatile"' >> .env  # or llama-3.1-8b-instant
 echo 'PINECONE_API_KEY="your_pinecone_api_key"' >> .env
 echo 'PINECONE_INDEX="placement-prep"' >> .env
 echo 'MONGODB_URI="mongodb+srv://..."' >> .env

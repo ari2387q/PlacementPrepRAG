@@ -116,6 +116,8 @@ class TempDocStore:
                     f.write(file_data)
             await asyncio.to_thread(write_file)
             print(f"[DEBUG] File written in {time.time()-t:.2f}s")
+            del file_data  # release raw bytes immediately after writing
+            gc.collect()
 
             print("[DEBUG] Loading PDF...")
             t = time.time()
@@ -138,11 +140,14 @@ class TempDocStore:
         emb_pipe = EmbeddingPipeline(model=embedding_model)
         chunks = await asyncio.to_thread(emb_pipe.chunk_documents, documents)
         print(f"[DEBUG] Chunked into {len(chunks)} chunks in {time.time()-t:.2f}s")
+        del documents  # free page objects before allocating embedding tensors
+        gc.collect()
 
         print("[DEBUG] Embedding...")
         t = time.time()
         embeddings = await asyncio.to_thread(emb_pipe.embed_chunks, chunks)
         print(f"[DEBUG] Embedded in {time.time()-t:.2f}s")
+        gc.collect()
 
         self.build(chunks, embeddings)
         return len(chunks)
