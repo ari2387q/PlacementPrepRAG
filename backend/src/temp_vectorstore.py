@@ -1,11 +1,12 @@
 import gc
 import os
 import tempfile
+import time
 import uuid
+from pathlib import Path
 
 import numpy as np
 from langchain_community.document_loaders import PyPDFLoader
-
 from src.embedding import EmbeddingPipeline
 from src.vectorstore import BM25
 
@@ -16,6 +17,7 @@ class TempDocStore:
     def __init__(self):
         self.chunks = []          # raw chunk text
         self.sources = []         # source filename per chunk
+        self.pages = []           # 1-based PDF page per chunk
         self.embeddings = None    # raw embeddings, shape (n_chunks, dim)
         self.normalized = None    # normalized embeddings for cosine sim
         self.bm25 = BM25()
@@ -27,6 +29,7 @@ class TempDocStore:
         """
         self.chunks = [c.page_content for c in chunks]
         self.sources = [c.metadata.get("source", "uploaded_file") for c in chunks]
+        self.pages = [int(c.metadata.get("page", 0)) + 1 for c in chunks]
         self.embeddings = np.array(embeddings, dtype=np.float32)
 
         norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
@@ -43,22 +46,40 @@ class TempDocStore:
         top_idx = np.argsort(-scores)[:top_k]
         return [(int(i), float(scores[i])) for i in top_idx]
 
-    def hybrid_query(self, query_text, query_embedding, top_k=5):
+    def hybrid_query(self, query_text, query_embedding, top_k=5, stage_timings=None):
+        started = time.perf_counter()
         vector_ranked = self.vector_search(query_embedding, top_k=top_k * 3)
+        dense_done = time.perf_counter()
         bm25_ranked = self.bm25.search(query_text, top_k=top_k * 3)
+        bm25_done = time.perf_counter()
 
+        fusion_started = time.perf_counter()
         fused = self._reciprocal_rank_fusion([vector_ranked, bm25_ranked])
         top_ids = [doc_id for doc_id, _ in fused[:top_k * 10]]
+        fusion_done = time.perf_counter()
 
         candidates = []
         for i, doc_id in enumerate(top_ids):
             candidates.append({
                 "index": i,
                 "distance": fused[i][1],
-                "metadata": {"text": self.chunks[doc_id], "source": self.sources[doc_id]},
+                "metadata": {
+                    "text": self.chunks[doc_id],
+                    "source": self.sources[doc_id],
+                    "page": self.pages[doc_id],
+                },
             })
 
-        return self._rerank(query_text, candidates, top_k=top_k)
+        rerank_started = time.perf_counter()
+        reranked = self._rerank(query_text, candidates, top_k=top_k)
+        if stage_timings is not None:
+            stage_timings.update({
+                "dense_retrieval_ms": (dense_done - started) * 1000,
+                "bm25_search_ms": (bm25_done - dense_done) * 1000,
+                "fusion_ms": (fusion_done - fusion_started) * 1000,
+                "reranking_ms": (time.perf_counter() - rerank_started) * 1000,
+            })
+        return reranked
 
     @staticmethod
     def _reciprocal_rank_fusion(ranked_lists, k=60):
@@ -112,10 +133,7 @@ class TempDocStore:
             print("[DEBUG] Writing file to disk...")
             t = time.time()
             file_data = await file.read()
-            def write_file():
-                with open(tmp_path, "wb") as f:
-                    f.write(file_data)
-            await asyncio.to_thread(write_file)
+            await asyncio.to_thread(Path(tmp_path).write_bytes, file_data)
             print(f"[DEBUG] File written in {time.time()-t:.2f}s")
             del file_data  # release raw bytes immediately after writing
             gc.collect()

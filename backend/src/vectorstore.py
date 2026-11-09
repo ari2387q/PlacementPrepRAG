@@ -1,11 +1,12 @@
 import math
 import os
+import time
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 from fastembed import TextEmbedding
 from pinecone import Pinecone, ServerlessSpec
-
 from src.embedding import EmbeddingPipeline
 
 
@@ -103,15 +104,24 @@ class PineconeVectorStore:
         vectors = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             source_path = chunk.metadata.get("source", "unknown")
-            
-
+            source_name = Path(source_path).stem.lower()
+            company = chunk.metadata.get("company")
+            if not company:
+                company = next((name for name in ("tcs", "ibm", "infosys", "infossy") if name in source_name), None)
+                if company == "infossy":
+                    company = "infosys"
+            page = chunk.metadata.get("page")
+            page = int(page) + 1 if page is not None else None
 
             vectors.append({
                 "id": f"chunk-{i}",
                 "values": embedding.tolist(),
-                "metadata": {"text": chunk.page_content,
-                             "source": source_path,
-                             }
+                "metadata": {
+                    "text": chunk.page_content,
+                    "source": source_path,
+                    "page": page,
+                    "company": company,
+                }
             })
 
         batch_size = 100
@@ -122,8 +132,7 @@ class PineconeVectorStore:
         print(f"[INFO] Upserted {len(vectors)} vectors to Pinecone")
 
     def query(self, query_text: str, top_k: int = 5):
-        print(f"[INFO] Querying Pinecone for: '{query_text}'")
-        query_emb = list(list(self.model.embed([query_text]))[0])
+        query_emb = list(next(iter(self.model.embed([query_text]))))
         results = self.index.query(vector=query_emb, top_k=top_k, include_metadata=True)
 
         return [
@@ -169,66 +178,66 @@ class PineconeVectorStore:
         fused = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return fused
 
-    def hybrid_query(self, query_text: str, top_k: int = 5):
-        print(f"[INFO] Hybrid querying for: '{query_text}'")
-        # detect company from query
+    def hybrid_query(self, query_text: str, top_k: int = 5, stage_timings: dict | None = None):
         query_lower = query_text.lower()
-        filter_dict = None
-        if "tcs" in query_lower:
-            filter_dict = {"company": {"$eq": "tcs"}}
-        elif "ibm" in query_lower:
-            filter_dict = {"company": {"$eq": "ibm"}}
-        elif "infosys" in query_lower:
-            filter_dict = {"company": {"$eq": "infosys"}}
+        requested_company = next((name for name in ("tcs", "ibm", "infosys") if name in query_lower), None)
 
-    #Vector search: top 15
-        query_emb = list(list(self.model.embed([query_text]))[0])
-        vector_results = self.index.query(
-            vector=query_emb, top_k=top_k*3, include_metadata=True,filter=filter_dict
-     )
+        started = time.perf_counter()
+        query_emb = list(next(iter(self.model.embed([query_text]))))
+        embedded = time.perf_counter()
+        vector_results = self.index.query(vector=query_emb, top_k=top_k * 3, include_metadata=True)
+        dense_done = time.perf_counter()
         vector_ranked = [(match.id, match.score) for match in vector_results.matches]
-        """for doc_id, score in vector_ranked[:10]:
-            print(f"{doc_id}->{score}")"""
-    #BM25 search :top 15
-        bm25_ranked = self.bm25.search(query_text, top_k=top_k*3)
+        bm25_ranked = self.bm25.search(query_text, top_k=top_k * 3)
+        bm25_done = time.perf_counter()
 
-        """for doc_id, score in bm25_ranked[:10]:
-            print(f"{doc_id} -> {score}")"""
-        
-        if filter_dict and "source" in filter_dict:
-            company = filter_dict["company"]["$eq"]
-    #fetch metadata for bm25 results to check source
-            bm25_ids = [doc_id for doc_id, _ in bm25_ranked]
-            if bm25_ids:
-                fetched = self.index.fetch(ids=bm25_ids)
-                bm25_ranked = [
-                    (doc_id, score) for doc_id, score in bm25_ranked
-                    if doc_id in fetched.vectors and 
-                    fetched.vectors[doc_id].metadata.get("company") == company
-                ]
-    #rrf fusion
+        ranked_ids = list(dict.fromkeys(doc_id for doc_id, _ in vector_ranked + bm25_ranked))
+        initial_fetch = self.index.fetch(ids=ranked_ids) if ranked_ids else None
+        metadata_by_id = {
+            doc_id: vector.metadata
+            for doc_id, vector in (initial_fetch.vectors.items() if initial_fetch else [])
+        }
+        if requested_company:
+            aliases = {"infosys": ("infosys", "infossy"), "tcs": ("tcs",), "ibm": ("ibm",)}[requested_company]
+
+            def belongs_to_company(doc_id: str) -> bool:
+                metadata = metadata_by_id.get(doc_id, {})
+                indexed_company = str(metadata.get("company", "")).lower()
+                source = Path(str(metadata.get("source", ""))).stem.lower()
+                return indexed_company == requested_company or any(alias in source for alias in aliases)
+
+            vector_ranked = [(doc_id, score) for doc_id, score in vector_ranked if belongs_to_company(doc_id)]
+            bm25_ranked = [(doc_id, score) for doc_id, score in bm25_ranked if belongs_to_company(doc_id)]
+        company_filter_done = time.perf_counter()
+
+        fusion_started = time.perf_counter()
         fused = self.reciprocal_rank_fusion([vector_ranked, bm25_ranked])
-
-        """for doc_id, score in fused[:10]:
-            print(f"{doc_id} -> {score}")"""
-    
-        top_ids = [doc_id for doc_id, _ in fused[:top_k*3]]
-        fetch_results = self.index.fetch(ids=top_ids)
-        candidates = [] #added candidates instead of results 
+        fusion_done = time.perf_counter()
+        top_ids = [doc_id for doc_id, _ in fused[:top_k * 3]]
+        fetch_results = self.index.fetch(ids=top_ids) if top_ids else None
+        fetch_done = time.perf_counter()
+        candidates = []
         for i, doc_id in enumerate(top_ids):
-            if doc_id in fetch_results.vectors:
-                metadata = fetch_results.vectors[doc_id].metadata
-                #changed results to candidates here 
+            if fetch_results and doc_id in fetch_results.vectors:
                 candidates.append({
                     "index": i,
                     "distance": fused[i][1],
-                    "metadata": metadata
-                    })
-                """print("DOC ID :", doc_id)
-                print("SOURCE :", metadata.get("source"))
-                print("TEXT   :", metadata.get("text", "")[:500])"""
+                    "metadata": fetch_results.vectors[doc_id].metadata,
+                })
 
+        rerank_started = time.perf_counter()
         reranked = self.rerank(query_text, candidates, top_k=top_k)
+        rerank_done = time.perf_counter()
+        if stage_timings is not None:
+            stage_timings.update({
+                "query_embedding_ms": (embedded - started) * 1000,
+                "dense_retrieval_ms": (dense_done - embedded) * 1000,
+                "bm25_search_ms": (bm25_done - dense_done) * 1000,
+                "company_filter_ms": (company_filter_done - bm25_done) * 1000,
+                "fusion_ms": (fusion_done - fusion_started) * 1000,
+                "metadata_fetch_ms": (fetch_done - fusion_done) * 1000,
+                "reranking_ms": (rerank_done - rerank_started) * 1000,
+            })
         print(f"[INFO] Reranked {len(candidates)} candidates to top {top_k}")
         return reranked
     

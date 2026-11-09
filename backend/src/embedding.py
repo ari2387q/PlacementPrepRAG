@@ -1,4 +1,5 @@
 from typing import Any
+
 import numpy as np
 from fastembed import TextEmbedding
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -41,4 +42,4 @@ class EmbeddingPipeline:
 
     def embed_query(self, query: str) -> list[float]:
         """Convenience method to embed a single query text."""
-        return list(list(self.model.embed([query]))[0])
+        return list(next(iter(self.model.embed([query]))))
