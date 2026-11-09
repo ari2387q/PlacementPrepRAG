@@ -1,0 +1,42 @@
+[
+  {
+    "id": "ibm-process",
+    "query": "What rounds were part of the IBM campus recruitment process?",
+    "relevant": [{"source": "data/companies/ibm.pdf", "pages": [1]}]
+  },
+  {
+    "id": "ibm-leetcode",
+    "query": "Which LeetCode problem was asked in the IBM interview?",
+    "relevant": [{"source": "data/companies/ibm.pdf", "pages": [2]}]
+  },
+  {
+    "id": "infosys-hr",
+    "query": "What did the Infosys HR interview focus on?",
+    "relevant": [{"source": "data/companies/infossy.pdf", "pages": [2]}]
+  },
+  {
+    "id": "tcs-dependency-injection",
+    "query": "What technical questions did TCS ask about dependency injection and REST APIs?",
+    "relevant": [{"source": "data/companies/tcs.pdf", "pages": [5]}]
+  },
+  {
+    "id": "tcs-nqt-paper-one-train",
+    "query": "In TCS NQT Paper 1, how long does the train take to clear the platform?",
+    "relevant": [{"source": "data/papers/TCS-NQT-Paper-1.pdf", "pages": [5]}]
+  },
+  {
+    "id": "tcs-nqt-paper-two-milk",
+    "query": "What is the cost price of one litre of milk in TCS NQT Paper 2?",
+    "relevant": [{"source": "data/papers/TCS-NQT-Paper-2.pdf", "pages": [4]}]
+  },
+  {
+    "id": "tcs-nqt-paper-three-compound-interest",
+    "query": "In TCS NQT Paper 3, what annual rate was used for compound interest?",
+    "relevant": [{"source": "data/papers/TCS-NQT-Paper-3.pdf", "pages": [5]}]
+  },
+  {
+    "id": "campus-hr-objective",
+    "query": "Which common campus placement HR questions ask about immediate objectives?",
+    "relevant": [{"source": "data/hr/Common HR questions during campus placement.pdf", "pages": [3]}]
+  }
+]

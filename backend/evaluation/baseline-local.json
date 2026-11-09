@@ -1,0 +1,441 @@
+{
+  "benchmark": "local-bundled-pdfs-v1",
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "corpus_pdf_count": 7,
+  "corpus_chunk_count": 230,
+  "query_count": 8,
+  "k": 5,
+  "metrics_macro_average": {
+    "dense": {
+      "recall": 0.3125,
+      "precision": 0.125,
+      "mrr": 0.3229,
+      "ndcg": 0.2318
+    },
+    "bm25": {
+      "recall": 0.5625,
+      "precision": 0.2,
+      "mrr": 0.5667,
+      "ndcg": 0.4475
+    },
+    "hybrid_rrf": {
+      "recall": 0.5,
+      "precision": 0.175,
+      "mrr": 0.4375,
+      "ndcg": 0.3554
+    },
+    "hybrid_reranked": {
+      "recall": 0.5,
+      "precision": 0.175,
+      "mrr": 0.4729,
+      "ndcg": 0.3553
+    }
+  },
+  "timings_ms": {
+    "corpus_embedding_ms": 16476.51,
+    "query_embedding_ms": 159.19,
+    "dense_retrieval_ms": 1.41,
+    "bm25_retrieval_ms": 57.3,
+    "fusion_and_fetch_ms": 0.14,
+    "reranking_ms": 4.31
+  },
+  "per_query": [
+    {
+      "id": "ibm-process",
+      "dense": {
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0
+      },
+      "bm25": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 0.6131471927654584
+      },
+      "hybrid_rrf": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.38685280723454163
+      },
+      "hybrid_reranked": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 0.6131471927654584
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/companies/ibm.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/hr/Common HR questions during campus placement.pdf",
+          "page": 5
+        },
+        {
+          "source": "data/hr/Common HR questions during campus placement.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/hr/Common HR questions during campus placement.pdf",
+          "page": 6
+        },
+        {
+          "source": "data/companies/ibm.pdf",
+          "page": 4
+        }
+      ]
+    },
+    {
+      "id": "ibm-leetcode",
+      "dense": {
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0
+      },
+      "bm25": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 0.25,
+        "ndcg": 0.2640681225725909
+      },
+      "hybrid_rrf": {
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0
+      },
+      "hybrid_reranked": {
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/companies/ibm.pdf",
+          "page": 4
+        },
+        {
+          "source": "data/companies/ibm.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/companies/ibm.pdf",
+          "page": 4
+        }
+      ]
+    },
+    {
+      "id": "infosys-hr",
+      "dense": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.2960819109658652
+      },
+      "bm25": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.23463936301137822
+      },
+      "hybrid_rrf": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.23463936301137822
+      },
+      "hybrid_reranked": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.2960819109658652
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 3
+        },
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "id": "tcs-dependency-injection",
+      "dense": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 0.46927872602275644
+      },
+      "bm25": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 0.46927872602275644
+      },
+      "hybrid_rrf": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 0.46927872602275644
+      },
+      "hybrid_reranked": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 0.46927872602275644
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 5
+        },
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 4
+        }
+      ]
+    },
+    {
+      "id": "tcs-nqt-paper-one-train",
+      "dense": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.5
+      },
+      "bm25": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 0.25,
+        "ndcg": 0.43067655807339306
+      },
+      "hybrid_rrf": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.6309297535714575
+      },
+      "hybrid_reranked": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 0.25,
+        "ndcg": 0.43067655807339306
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/papers/TCS-NQT-Paper-2.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-3.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-1.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-1.pdf",
+          "page": 5
+        },
+        {
+          "source": "data/companies/tcs.pdf",
+          "page": 4
+        }
+      ]
+    },
+    {
+      "id": "tcs-nqt-paper-two-milk",
+      "dense": {
+        "recall": 0.0,
+        "precision": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0
+      },
+      "bm25": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      },
+      "hybrid_rrf": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.5
+      },
+      "hybrid_reranked": {
+        "recall": 1.0,
+        "precision": 0.2,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.5
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/papers/TCS-NQT-Paper-1.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-2.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-2.pdf",
+          "page": 4
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-3.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-1.pdf",
+          "page": 6
+        }
+      ]
+    },
+    {
+      "id": "tcs-nqt-paper-three-compound-interest",
+      "dense": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.38685280723454163
+      },
+      "bm25": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.38685280723454163
+      },
+      "hybrid_rrf": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.38685280723454163
+      },
+      "hybrid_reranked": {
+        "recall": 0.5,
+        "precision": 0.2,
+        "mrr": 0.2,
+        "ndcg": 0.23719771276929622
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/papers/TCS-NQT-Paper-1.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-2.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-3.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-1.pdf",
+          "page": 3
+        },
+        {
+          "source": "data/papers/TCS-NQT-Paper-3.pdf",
+          "page": 5
+        }
+      ]
+    },
+    {
+      "id": "campus-hr-objective",
+      "dense": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.25,
+        "ndcg": 0.20210734650054757
+      },
+      "bm25": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.2,
+        "ndcg": 0.18154179253735267
+      },
+      "hybrid_rrf": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.3333333333333333,
+        "ndcg": 0.23463936301137822
+      },
+      "hybrid_reranked": {
+        "recall": 0.3333333333333333,
+        "precision": 0.2,
+        "mrr": 0.5,
+        "ndcg": 0.2960819109658652
+      },
+      "hybrid_top_sources": [
+        {
+          "source": "data/hr/Common HR questions during campus placement.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/hr/Common HR questions during campus placement.pdf",
+          "page": 3
+        },
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 1
+        },
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 2
+        },
+        {
+          "source": "data/companies/infossy.pdf",
+          "page": 1
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Dense retrieval uses the cached SentenceTransformers implementation of MiniLM, not FastEmbed ONNX or Pinecone.",
+    "The benchmark is local and does not measure Groq answer quality or live service latency.",
+    "Gold labels identify relevant PDF pages and need human review before treating the scores as a release gate."
+  ]
+}
