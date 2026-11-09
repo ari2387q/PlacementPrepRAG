@@ -102,6 +102,19 @@ flowchart TB
 
 ## 🚀 Running Locally
 
+### Account Integrations
+
+GitHub uses the OAuth web flow with the `read:user` permission. Set these **backend-only** environment variables in the deployment settings; never add the client secret or encryption key to the frontend:
+
+- `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from a GitHub OAuth App.
+- `GITHUB_REDIRECT_URI`, set to the exact backend callback URL, for example `https://your-api.example.com/integrations/github/callback`.
+- `FRONTEND_ORIGIN`, set to the frontend origin that should receive the OAuth result, for example `https://your-site.example.com`.
+- `INTEGRATION_TOKEN_ENCRYPTION_KEY`, a Fernet key. Generate one with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` and store it as a deployment secret. Keep the key stable: changing it requires users to reconnect GitHub.
+
+MongoDB stores encrypted GitHub credentials and each account's integration data. If MongoDB is not configured, integration data is held in process memory and is lost on restart. The dashboard reads the GitHub contribution calendar and yearly totals, recent pull requests, public commit events, and public repositories, refreshing on demand with a short cache. Private contribution totals depend on GitHub's profile visibility setting; private repository details are not exposed by this dashboard.
+
+LeetCode figures are entered by the user because LeetCode prohibits scraping and does not provide a supported public API for this use. The dashboard labels the counts as self-reported and stores them under the signed-in account.
+
 ### Prerequisites
 - Python 3.12+
 - Node.js 18+
