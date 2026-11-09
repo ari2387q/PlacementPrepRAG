@@ -10,7 +10,6 @@ import {
   Check, 
   Copy,
   Terminal,
-  BookOpen,
   MessageSquare,
   ChevronRight,
   HelpCircle,
@@ -24,6 +23,8 @@ import {
   Clock,
   ChevronDown,
   Layers,
+  Download,
+  Shield,
 } from 'lucide-react';
 import { QuizFlashcardDeck, type QuizItem } from './components/QuizFlashcardDeck';
 import { PipelineVisualizer } from './components/PipelineVisualizer';
@@ -32,6 +33,7 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { HelpModal } from './components/HelpModal';
 import { AuthModal } from './components/AuthModal';
 import { useAuth } from './hooks/useAuth';
+import { DashboardPages, type DashboardSection } from './components/DashboardPages';
 
 interface Message {
   id: string;
@@ -44,48 +46,64 @@ interface Message {
   isStreaming?: boolean;
 }
 
-const PRESET_PROMPTS = [
-  "What questions did TCS ask in their NQT paper?",
-  "What HR questions are commonly asked in campus placements?",
-  "What was the Infosys interview experience like?",
-  "How should I prepare for IBM technical interviews?"
+const PRESET_TOPICS = [
+  { title: "Technical Concepts", prompt: "Explain the key differences between Process and Thread in Operating Systems with examples." },
+  { title: "System Design", prompt: "How do you design a scalable URL shortener like TinyURL? Outline the key tradeoffs." },
+  { title: "DSA Strategy", prompt: "What are the common patterns used to solve Two Pointer and Sliding Window problems?" },
+  { title: "Behavioral & HR", prompt: "How should I structure my answer to 'Tell me about a challenging project you built' using the STAR method?" }
 ];
 
-type Theme = 'slate' | 'light' | 'cyberpunk' | 'emerald';
+type Theme = 'rose' | 'mint' | 'sky' | 'slate';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
+const ANONYMOUS_HISTORY_KEY = 'placement_prep_chat_history:anonymous';
+const welcomeMessage = (): Message => ({
+  id: 'welcome',
+  role: 'assistant',
+  content: 'Hello! I am your AI Placement Prep Assistant.\n\nAsk me any concept in Data Structures, Algorithms, Operating Systems, DBMS, System Design, or upload a placement study document to practice questions and generate quizzes.',
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+});
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const savedChat = localStorage.getItem('placement_prep_chat_history');
-    if (savedChat) {
-      try {
-        return JSON.parse(savedChat);
-      } catch (e) {
-        console.error("Failed to parse chat history", e);
-      }
-    }
-    return [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: "SYSTEM ONLINE. KNOWLEDGE BASE LOADED.\n\nReady for query input.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-    ];
-  });
+  const auth = useAuth();
+  const workspaceKey = auth.user ? `${auth.user.sub}:${auth.user.token}` : 'anonymous';
+  return <PlacementWorkspace key={workspaceKey} {...auth} />;
+}
+
+function loadStoredMessages(accountKey: string): Message[] {
+  const storageKey = accountKey === 'anonymous'
+    ? ANONYMOUS_HISTORY_KEY
+    : `placement_prep_chat_history:${accountKey}`;
+  try {
+    const stored = localStorage.getItem(storageKey);
+    const parsed = stored ? JSON.parse(stored) as Message[] : null;
+    return parsed?.length ? parsed : [welcomeMessage()];
+  } catch (err) {
+    console.warn('Could not load local chat history', err);
+    return [welcomeMessage()];
+  }
+}
+
+function PlacementWorkspace({ user, login, logout }: ReturnType<typeof useAuth>) {
+  const accountKey = user?.sub ?? 'anonymous';
+  const [historyReadyFor, setHistoryReadyFor] = useState<string | null>(user ? null : 'anonymous');
+  const [messages, setMessages] = useState<Message[]>(() => loadStoredMessages(accountKey));
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('placement_prep_app_theme') as Theme) || 'slate');
-  const [uploadedFile, setUploadedFile] = useState<{ sessionId: string; filename: string } | null>(null);
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('placement_prep_app_theme') as Theme) || 'rose');
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('placement_prep_cloud_sync') === 'true';
+  });
+  const [uploadedFile, setUploadedFile] = useState<{ sessionId: string; sessionToken: string; filename: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [quizItems, setQuizItems] = useState<QuizItem[] | null>(null);
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<DashboardSection | 'assistant'>('overview');
 
   // UI Panels
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -98,9 +116,6 @@ function App() {
   // Streaming state
   const streamAbortRef = useRef<AbortController | null>(null);
 
-  // Auth
-  const { user, login, logout } = useAuth();
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -112,45 +127,84 @@ function App() {
     localStorage.setItem('placement_prep_app_theme', theme);
   }, [theme]);
 
+  const toggleCloudSync = () => {
+    setCloudSyncEnabled(prev => {
+      const nextVal = !prev;
+      localStorage.setItem('placement_prep_cloud_sync', String(nextVal));
+      if (nextVal && user && messages.length > 0) {
+        const toSave = messages.map(m => ({ ...m, isStreaming: false }));
+        fetch(`${BASE_URL}/history/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+          body: JSON.stringify({ messages: toSave })
+        }).catch(err => console.error("Failed to sync history", err));
+      }
+      return nextVal;
+    });
+  };
+
+  const exportChatMarkdown = () => {
+    const exportable = messages.filter(m => m.id !== 'welcome');
+    if (exportable.length === 0) return;
+    const content = exportable.map(m => `### ${m.role === 'user' ? '👤 You' : '🤖 PlacementPrep AI'} (${m.timestamp})\n\n${m.content}\n\n${m.sources?.length ? `*Sources: ${m.sources.join(', ')}*\n\n` : ''}`).join('---\n\n');
+    const blob = new Blob([`# PlacementPrep AI - Chat History\n*Exported on ${new Date().toLocaleString()}*\n\n---\n\n${content}`], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `placement-prep-chat-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Sync to MongoDB on login
+  // Load each account's own cache and server history before enabling sync.
   useEffect(() => {
-    if (user?.email) {
-      setIsLoading(true);
-      fetch(`${BASE_URL}/history/${user.email}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.messages && data.messages.length > 0) {
-            setMessages(data.messages);
-          }
-        })
-        .catch(err => console.error("Failed to fetch history", err))
-        .finally(() => setIsLoading(false));
+    let active = true;
+    if (!user) {
+      return;
     }
-  }, [user?.email]);
 
-  // Save chat history on change (and sync to MongoDB)
+    fetch(`${BASE_URL}/history/me`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then(async res => {
+        if (!res.ok) throw new Error(`History load failed (${res.status})`);
+        return res.json();
+      })
+      .then(data => {
+        if (active) setMessages(data.messages?.length ? data.messages : [welcomeMessage()]);
+      })
+      .catch(err => console.error('Failed to fetch account history', err))
+      .finally(() => {
+        if (active) {
+          setHistoryReadyFor(user.sub);
+        }
+      });
+    return () => { active = false; };
+  }, [user]);
+
+  // Save chat history on change (Local-First; syncs to MongoDB ONLY with user consent)
   useEffect(() => {
+    if (historyReadyFor !== accountKey) return;
+    const historyKey = user ? `placement_prep_chat_history:${user.sub}` : ANONYMOUS_HISTORY_KEY;
     if (messages.length > 0) {
       // Don't persist streaming placeholders
       const toSave = messages.map(m => ({ ...m, isStreaming: false }));
-      localStorage.setItem('placement_prep_chat_history', JSON.stringify(toSave));
+      localStorage.setItem(historyKey, JSON.stringify(toSave));
       
-      if (user?.email) {
+      if (user && cloudSyncEnabled) {
         fetch(`${BASE_URL}/history/sync`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email, messages: toSave })
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+          body: JSON.stringify({ messages: toSave })
         }).catch(err => console.error("Failed to sync history", err));
       }
     } else {
-      localStorage.removeItem('placement_prep_chat_history');
+      localStorage.removeItem(historyKey);
     }
     scrollToBottom();
-  }, [messages, user?.email]);
+  }, [messages, user, accountKey, historyReadyFor, cloudSyncEnabled]);
 
   // Ctrl+K to focus input
   useEffect(() => {
@@ -181,7 +235,9 @@ function App() {
     setShowConfirmDialog(false);
 
     try {
-      await fetch(`${BASE_URL}/clear`, { method: 'POST' });
+      if (user) {
+        await fetch(`${BASE_URL}/clear`, { method: 'POST', headers: { Authorization: `Bearer ${user.token}` } });
+      }
     } catch (err) {
       console.warn('Backend history clear failed', err);
     }
@@ -218,6 +274,7 @@ function App() {
     try {
       const response = await fetch(`${BASE_URL}/upload`, {
         method: 'POST',
+        headers: user ? { Authorization: `Bearer ${user.token}` } : undefined,
         body: formData,
       });
 
@@ -226,7 +283,8 @@ function App() {
       const data = await response.json();
       if (data.error) throw new Error(data.error);
 
-      const newUploaded = { sessionId: data.session_id, filename: data.filename };
+      if (!data.session_token) throw new Error('The server did not return a document access token. Please retry the upload.');
+      const newUploaded = { sessionId: data.session_id, sessionToken: data.session_token, filename: data.filename };
       setUploadedFile(newUploaded);
       setQuizItems(null);
       setQuizError(null);
@@ -255,14 +313,20 @@ function App() {
     setQuizItems(null);
     setQuizError(null);
     try {
-      await fetch(`${BASE_URL}/document/${sid}`, { method: 'DELETE' });
+      await fetch(`${BASE_URL}/document/${sid}`, {
+        method: 'DELETE',
+        headers: {
+          ...(user ? { Authorization: `Bearer ${user.token}` } : {}),
+          'X-Document-Token': uploadedFile.sessionToken,
+        },
+      });
     } catch (err) {
       console.error("Failed to delete document session from server", err);
     }
   };
 
   // ── SSE Streaming Send ────────────────────────────────────────────────────────
-  const handleSendMessage = useCallback(async (textToSend: string, fileOverride?: { sessionId: string; filename: string }) => {
+  const handleSendMessage = useCallback(async (textToSend: string, fileOverride?: { sessionId: string; sessionToken: string; filename: string }) => {
     const trimmed = textToSend.trim();
     if (!trimmed) return;
 
@@ -315,7 +379,11 @@ function App() {
     try {
       const response = await fetch(streamUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user ? { Authorization: `Bearer ${user.token}` } : {}),
+          ...(activeFile ? { 'X-Document-Token': activeFile.sessionToken } : {}),
+        },
         body: JSON.stringify(body),
         signal: abortCtrl.signal,
       });
@@ -329,47 +397,46 @@ function App() {
       let accumulatedContent = '';
       let sources: string[] = [];
       let pipelineStages: any[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+      let streamDone = false;
 
-      while (true) {
+      const handleEvent = (frame: string) => {
+        let eventType = 'token';
+        const dataLines: string[] = [];
+        for (const line of frame.split('\n')) {
+          if (line.startsWith('event:')) eventType = line.slice(6).trim();
+          else if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
+        }
+        const data = dataLines.join('\n');
+        if (eventType === 'metadata') {
+          try {
+            const meta = JSON.parse(data);
+            sources = meta.sources ?? sources;
+            pipelineStages = meta.pipeline_stages ?? pipelineStages;
+            setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, sources, pipelineStages } : m));
+          } catch { /* Ignore malformed metadata frames. */ }
+        } else if (eventType === 'token') {
+          let token = data;
+          try { token = JSON.parse(data) as string; } catch { /* Compatibility with older servers. */ }
+          accumulatedContent += token;
+          const captured = accumulatedContent;
+          setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, content: captured, isStreaming: true } : m));
+        } else if (eventType === 'error') {
+          setError('The assistant could not complete this response. Please try again.');
+        } else if (eventType === 'done') {
+          streamDone = true;
+        }
+      };
+
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            // handled with next data line
-          } else if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            const prevLines = lines.slice(0, lines.indexOf(line));
-            const eventLine = prevLines.reverse().find(l => l.startsWith('event: '));
-            const eventType = eventLine ? eventLine.slice(7).trim() : 'token';
-
-            if (eventType === 'metadata') {
-              try {
-                const meta = JSON.parse(data);
-                sources = meta.sources ?? [];
-                pipelineStages = meta.pipeline_stages ?? [];
-                setMessages(prev => prev.map(m =>
-                  m.id === assistantMsgId
-                    ? { ...m, sources, pipelineStages }
-                    : m
-                ));
-              } catch { /* ignore parse errors */ }
-            } else if (eventType === 'token') {
-              accumulatedContent += data;
-              const captured = accumulatedContent;
-              setMessages(prev => prev.map(m =>
-                m.id === assistantMsgId
-                  ? { ...m, content: captured, isStreaming: true }
-                  : m
-              ));
-            } else if (eventType === 'done' || eventType === 'error') {
-              break;
-            }
-          }
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+        let boundary = buffer.indexOf('\n\n');
+        while (boundary >= 0) {
+          handleEvent(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+          boundary = buffer.indexOf('\n\n');
         }
       }
 
@@ -394,7 +461,11 @@ function App() {
 
         const fbRes = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(user ? { Authorization: `Bearer ${user.token}` } : {}),
+            ...(activeFile ? { 'X-Document-Token': activeFile.sessionToken } : {}),
+          },
           body: JSON.stringify(fbBody),
         });
         const data = await fbRes.json();
@@ -421,8 +492,7 @@ function App() {
       setIsLoading(false);
       streamAbortRef.current = null;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUploading, uploadedFile]);
+  }, [isUploading, uploadedFile, user]);
 
   // ── Quiz ──────────────────────────────────────────────────────────────────────
   const fetchQuizItems = async (sessionId: string) => {
@@ -431,7 +501,11 @@ function App() {
     try {
       const response = await fetch(`${BASE_URL}/document/generate-quiz`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user ? { Authorization: `Bearer ${user.token}` } : {}),
+          ...(uploadedFile ? { 'X-Document-Token': uploadedFile.sessionToken } : {}),
+        },
         body: JSON.stringify({ session_id: sessionId, count: 4 }),
       });
       if (!response.ok) throw new Error(`Quiz generation failed: ${response.statusText}`);
@@ -527,7 +601,7 @@ function App() {
           {inlineParts.map((inlinePart, subIndex) => {
             if (inlinePart.startsWith('`') && inlinePart.endsWith('`')) {
               return (
-                <code key={subIndex} className="px-1.5 py-0.5 rounded bg-slate-900/60 text-themeAccent font-mono text-xs md:text-sm border border-themeBorder/40">
+                <code key={subIndex} className="px-1.5 py-0.5 rounded bg-themeBg border border-themeBorder text-themeAccent font-mono text-xs md:text-sm font-semibold">
                   {inlinePart.slice(1, -1)}
                 </code>
               );
@@ -549,6 +623,19 @@ function App() {
       );
     });
   };
+
+  if (activeSection !== 'assistant') {
+    return <DashboardPages
+      section={activeSection}
+      onSectionChange={setActiveSection}
+      onOpenAssistant={() => setActiveSection('assistant')}
+      user={user}
+      login={login}
+      logout={logout}
+      showLogin={showAuthModal}
+      setShowLogin={setShowAuthModal}
+    />;
+  }
 
   return (
     <div className="flex h-screen w-screen bg-themeBg text-themeTextPrimary overflow-hidden font-sans p-2 md:p-4 lg:p-6 gap-4">
@@ -621,31 +708,6 @@ function App() {
             </p>
           </div>
 
-          {/* Quick Prompts in Sidebar */}
-          {messages.length > 1 && (
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-themeTextSecondary flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-themeAccent" /> Quick Prompts
-              </span>
-            <div className="space-y-1.5">
-              {PRESET_PROMPTS.map((prompt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setInput(prompt);
-                    textareaRef.current?.focus();
-                    if (window.innerWidth < 768) setIsSidebarOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2.5 rounded-xl bg-themeCard/60 border border-themeBorder/40 text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeSidebar/80 hover:border-themeAccent/40 transition-all duration-200 text-[11px] flex items-center justify-between group"
-                >
-                  <span className="truncate leading-snug pr-2">{prompt}</span>
-                  <ChevronRight className="w-3 h-3 flex-shrink-0 text-themeTextSecondary group-hover:text-themeAccent transition-colors" />
-                </button>
-              ))}
-            </div>
-          </div>
-          )}
-
           {/* Active Document Session */}
           {uploadedFile && (
             <div className="space-y-2">
@@ -717,30 +779,21 @@ function App() {
         {/* Lower Sidebar */}
         <div className="space-y-4 pt-4 border-t border-themeBorder/50 flex-shrink-0">
 
-          {/* Theme Selector */}
-          <div className="space-y-2">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-themeTextSecondary">Select Theme</span>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { id: 'slate', label: 'Slate', color: 'bg-indigo-500', glow: 'rgba(56,189,248,0.2)' },
-                { id: 'light', label: 'Light', color: 'bg-indigo-600', glow: 'rgba(99,102,241,0.2)' },
-                { id: 'cyberpunk', label: 'Neon', color: 'bg-fuchsia-500', glow: 'rgba(217,70,239,0.2)' },
-                { id: 'emerald', label: 'Mint', color: 'bg-emerald-500', glow: 'rgba(16,185,129,0.2)' },
-              ] as const).map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setTheme(t.id)}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-all ${
-                    theme === t.id
-                      ? `bg-themeAccent/20 border-themeAccent text-themeAccent shadow-[0_0_10px_${t.glow}]`
-                      : 'bg-themeBg/40 border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary'
-                  }`}
-                >
-                  <span className={`w-2.5 h-2.5 rounded-full ${t.color}`} />
-                  {t.label}
-                </button>
-              ))}
+          {/* Privacy & Storage Indicator */}
+          <div className="p-3 rounded-xl bg-themeCard/60 border border-themeBorder/60 space-y-1 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-themeTextPrimary flex items-center gap-1.5 text-[11px]">
+                <Shield className="w-3.5 h-3.5 text-themeAccent" /> Storage Mode
+              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cloudSyncEnabled ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-200/50 text-slate-600'}`}>
+                {cloudSyncEnabled ? 'Cloud Synced' : 'Local Only'}
+              </span>
             </div>
+            <p className="text-[10px] text-themeTextSecondary leading-tight m-0">
+              {cloudSyncEnabled 
+                ? 'Chat history is synced to your Google account.' 
+                : 'Conversations are stored privately in your browser.'}
+            </p>
           </div>
 
           {/* Help & Documentation — now functional */}
@@ -782,26 +835,81 @@ function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Theme Picker Up Top */}
+            <div className="flex items-center gap-1 bg-themeCard/90 border border-themeBorder/80 rounded-full p-1 shadow-xs">
+              {([
+                { id: 'rose' as const, label: 'Rose', icon: '🌸' },
+                { id: 'mint' as const, label: 'Mint', icon: '🌿' },
+                { id: 'sky' as const, label: 'Sky', icon: '🌊' },
+              ]).map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                    theme === t.id
+                      ? 'bg-themeAccent text-white shadow-xs'
+                      : 'text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeCard'
+                  }`}
+                  title={`Switch to ${t.label} theme`}
+                >
+                  <span className="text-xs">{t.icon}</span>
+                  <span className="hidden sm:inline text-[11px]">{t.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Cloud Sync / Privacy Badge */}
+            <button
+              onClick={toggleCloudSync}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all shadow-xs ${
+                cloudSyncEnabled
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
+                  : 'bg-themeCard border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary'
+              }`}
+              title={cloudSyncEnabled ? 'Cloud Sync Enabled: Chat history synced to your Google account' : 'Local Only: Conversations stored strictly in your browser (click to enable cloud sync)'}
+            >
+              <span className={`w-2 h-2 rounded-full ${cloudSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+              <span className="hidden md:inline text-[11px]">{cloudSyncEnabled ? 'Cloud Sync' : 'Local Only'}</span>
+            </button>
+
+            {/* Export Chat Button */}
+            <button
+              onClick={exportChatMarkdown}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary hover:border-themeAccent/40 bg-themeCard transition-all text-xs font-semibold shadow-xs"
+              title="Export chat history as Markdown file"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-[11px]">Export</span>
+            </button>
+
+            {/* Dashboard Navigation */}
+            <button 
+              onClick={() => setActiveSection('overview')} 
+              className="rounded-full border border-themeBorder px-3.5 py-1.5 text-xs font-semibold text-themeTextSecondary transition hover:border-themeAccent/50 hover:text-themeTextPrimary bg-themeCard shadow-xs"
+            >
+              Dashboard
+            </button>
+
             {/* Quiz Button */}
             {uploadedFile && (
               <button
                 onClick={handleToggleQuizDeck}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all shadow-xs ${
                   showQuizDeck
                     ? 'bg-themeAccent border-themeAccent text-white'
                     : 'bg-themeAccent/15 border-themeAccent/40 text-themeAccent hover:bg-themeAccent/25'
                 }`}
               >
                 <QuizIcon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">⚡ Generate Quiz</span>
+                <span className="hidden sm:inline">⚡ Quiz</span>
               </button>
             )}
 
             {/* Auth Button */}
             <button
               onClick={() => setShowAuthModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-themeBorder/50 text-themeTextSecondary hover:text-themeTextPrimary hover:border-themeAccent/40 transition-all text-xs font-semibold"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary hover:border-themeAccent/40 bg-themeCard transition-all text-xs font-semibold shadow-xs"
               title={user ? user.name : 'Sign In with Google'}
             >
               {user ? (
@@ -826,11 +934,11 @@ function App() {
             {/* Clear / Purge Button */}
             <button
               onClick={() => setShowConfirmDialog(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-themeTextSecondary hover:text-rose-500 hover:bg-rose-500/10 border border-themeBorder/50 hover:border-rose-500/30 transition-all text-xs font-semibold"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-themeTextSecondary hover:text-rose-600 hover:bg-rose-50 border border-themeBorder hover:border-rose-300 transition-all text-xs font-semibold shadow-xs"
               title="Clear all messages"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Purge DB</span>
+              <span className="hidden sm:inline">Clear</span>
             </button>
           </div>
         </header>
@@ -881,10 +989,10 @@ function App() {
                 {/* Message Bubble */}
                 <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} space-y-1 w-full`}>
                   <div
-                    className={`px-5 py-3 rounded-[2rem] shadow-sm text-sm leading-relaxed border ${
+                    className={`px-5 py-3.5 rounded-[1.75rem] shadow-xs text-sm leading-relaxed border transition-all ${
                       message.role === 'user'
-                        ? 'bg-themeAccent/15 border-themeAccent/30 text-themeTextPrimary rounded-tr-sm shadow-[0_0_15px_rgba(56,189,248,0.1)] backdrop-blur-md'
-                        : 'bg-themeCard/60 border-themeBorder/60 text-themeTextPrimary rounded-tl-sm backdrop-blur-md shadow-lg'
+                        ? 'bg-themeAccent text-white border-transparent rounded-tr-xs shadow-sm font-medium'
+                        : 'bg-themeCard border-themeBorder text-themeTextPrimary rounded-tl-xs shadow-xs'
                     }`}
                   >
                     {message.content
@@ -950,25 +1058,28 @@ function App() {
         <footer className="flex-shrink-0 bg-themeSidebar/40 border-t border-themeBorder/30 backdrop-blur-md py-5 px-4 md:px-8">
           <div className="max-w-3xl mx-auto w-full flex flex-col space-y-4">
 
-            {/* Quick Prompt Cards — shown only before first message */}
+            {/* Suggested Interview Prep Topics — shown only before first query */}
             {messages.length <= 1 && !isLoading && (
               <div className="flex flex-col space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-themeTextSecondary flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-themeAccent" />
-                  Suggested prep topics
+                  <Sparkles className="w-3.5 h-3.5 text-themeAccent" />
+                  Suggested interview prep topics
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {PRESET_PROMPTS.map((prompt, idx) => (
+                  {PRESET_TOPICS.map((topic, idx) => (
                     <button
                       key={idx}
                       onClick={() => {
-                        setInput(prompt);
+                        setInput(topic.prompt);
                         textareaRef.current?.focus();
                       }}
-                      className="text-left px-4 py-3 rounded-[1.5rem] bg-themeCard/60 border border-themeBorder/40 text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeSidebar/80 hover:border-themeAccent/40 transition-all duration-300 text-xs flex items-center justify-between group backdrop-blur-sm"
+                      className="text-left px-4 py-3 rounded-2xl bg-themeCard border border-themeBorder text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeSidebar hover:border-themeAccent/40 transition-all duration-200 text-xs flex items-center justify-between group shadow-2xs"
                     >
-                      <span className="truncate">{prompt}</span>
-                      <MessageSquare className="w-3.5 h-3.5 text-themeTextSecondary group-hover:text-themeAccent transition-colors flex-shrink-0 ml-2" />
+                      <div className="flex flex-col truncate pr-2">
+                        <span className="font-semibold text-themeTextPrimary text-[11px]">{topic.title}</span>
+                        <span className="truncate text-[10px] text-themeTextSecondary">{topic.prompt}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-themeTextSecondary group-hover:text-themeAccent group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                     </button>
                   ))}
                 </div>

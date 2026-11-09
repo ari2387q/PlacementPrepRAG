@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, LogIn, LogOut, User as UserIcon, Mail, Shield } from 'lucide-react';
 import type { GoogleUser } from '../hooks/useAuth';
 
@@ -27,6 +27,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  async function handleCredentialResponse(response: { credential: string }) {
+    const idToken = response.credential;
+    try {
+      setAuthError(null);
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
+      const res = await fetch(`${baseUrl}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: idToken }),
+      });
+      if (!res.ok) throw new Error('Google sign-in could not be verified by the server. Check the OAuth setup and try again.');
+      const data = await res.json();
+      const googleUser: GoogleUser = {
+        sub: data.sub,
+        name: data.name ?? 'User',
+        email: data.email ?? '',
+        picture: data.picture ?? '',
+        token: idToken,
+      };
+      if (!googleUser.sub || !googleUser.email) throw new Error('Google returned an incomplete account profile.');
+      onLoginSuccess(googleUser);
+      onClose();
+    } catch (err) {
+      console.error('Google sign-in verification failed', err);
+      setAuthError(err instanceof Error ? err.message : 'Google sign-in failed. Please try again.');
+    }
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -77,47 +106,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user, clientId]);
-
-  const handleCredentialResponse = async (response: { credential: string }) => {
-    const idToken = response.credential;
-
-    // Decode the JWT payload (base64) to get basic user info immediately
-    try {
-      const payloadBase64 = idToken.split('.')[1];
-      const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
-      const payload = JSON.parse(payloadJson);
-
-      const googleUser: GoogleUser = {
-        name: payload.name ?? 'User',
-        email: payload.email ?? '',
-        picture: payload.picture ?? '',
-        token: idToken,
-      };
-
-      // Optionally verify token on backend
-      try {
-        const baseUrl = import.meta.env.VITE_API_URL || 'https://placementpreprag.onrender.com';
-        const res = await fetch(`${baseUrl}/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_token: idToken }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          googleUser.name = data.name ?? googleUser.name;
-          googleUser.email = data.email ?? googleUser.email;
-          googleUser.picture = data.picture ?? googleUser.picture;
-        }
-      } catch {
-        // Backend verification optional — proceed with decoded payload
-      }
-
-      onLoginSuccess(googleUser);
-      onClose();
-    } catch (err) {
-      console.error('Failed to decode Google token', err);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -210,6 +198,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="w-full px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 text-center leading-relaxed">
                   ⚙️ Google OAuth is not configured yet.<br />
                   Please set <code className="font-mono text-amber-200">VITE_GOOGLE_CLIENT_ID</code> in your <code className="font-mono text-amber-200">.env.local</code> file.
+                </div>
+              )}
+
+              {authError && (
+                <div role="alert" className="w-full px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 text-center">
+                  {authError}
                 </div>
               )}
 
