@@ -185,9 +185,16 @@ class GoogleAuthRequest(BaseModel):
 
 class LeetCodeManualStats(BaseModel):
     profile_url: str = Field(min_length=1, max_length=300)
-    easy: int = Field(ge=0, le=100000)
-    medium: int = Field(ge=0, le=100000)
-    hard: int = Field(ge=0, le=100000)
+    easy: int = Field(default=0, ge=0, le=100000)
+    medium: int = Field(default=0, ge=0, le=100000)
+    hard: int = Field(default=0, ge=0, le=100000)
+    topics: dict[str, int] = Field(default_factory=dict)
+    daily_solves: dict[str, int] = Field(default_factory=dict)
+
+
+class ResumeScoreRequest(BaseModel):
+    session_id: str = Field(min_length=1, max_length=120)
+    target_role: str = Field(default="Software Development Engineer", max_length=100)
 
 
 def _integration_doc(user_id: str) -> dict:
@@ -598,6 +605,19 @@ def generate_quiz(payload: QuizRequest, request: Request):
         raise HTTPException(status_code=502, detail="Quiz generation is temporarily unavailable")
 
 
+@app.post("/document/score-resume")
+def score_resume(payload: ResumeScoreRequest, request: Request):
+    session = assert_document_access(payload.session_id, request)
+    enforce_rate_limit(request, {"sub": session["owner_id"]} if session.get("owner_id") else None)
+
+    try:
+        score_data = rag.score_resume_from_store(session["store"], target_role=payload.target_role)
+        return score_data
+    except Exception as e:  # noqa: BLE001
+        print(f"[ERROR] score_resume failed: {type(e).__name__}")
+        raise HTTPException(status_code=502, detail="Resume evaluation is temporarily unavailable")
+
+
 # ── Google OAuth ───────────────────────────────────────────────────────────────
 @app.post("/auth/google")
 def google_auth(request: Request, payload: GoogleAuthRequest):
@@ -792,7 +812,15 @@ def save_leetcode_manual_stats(payload: LeetCodeManualStats, request: Request):
     parsed = urlparse(payload.profile_url if "://" in payload.profile_url else f"https://{payload.profile_url}")
     if parsed.scheme != "https" or parsed.hostname not in {"leetcode.com", "www.leetcode.com"} or not parsed.path.strip("/"):
         raise HTTPException(status_code=422, detail="Enter a valid LeetCode profile URL")
-    stats = {"profile_url": f"https://{parsed.hostname}{parsed.path.rstrip('/')}", "easy": payload.easy, "medium": payload.medium, "hard": payload.hard, "updated_at": datetime.now(UTC).isoformat()}
+    stats = {
+        "profile_url": f"https://{parsed.hostname}{parsed.path.rstrip('/')}",
+        "easy": payload.easy,
+        "medium": payload.medium,
+        "hard": payload.hard,
+        "topics": payload.topics or {},
+        "daily_solves": payload.daily_solves or {},
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
     _save_integration_doc(user["sub"], {"leetcode_manual": stats})
     return {"connected": True, "stats": stats, "source": "user-entered"}
 
