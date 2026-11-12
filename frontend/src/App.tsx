@@ -146,8 +146,8 @@ function PlacementWorkspace({ user, login, logout }: ReturnType<typeof useAuth>)
   const exportChatMarkdown = () => {
     const exportable = messages.filter(m => m.id !== 'welcome');
     if (exportable.length === 0) return;
-    const content = exportable.map(m => `### ${m.role === 'user' ? '👤 You' : '🤖 PlacementPrep AI'} (${m.timestamp})\n\n${m.content}\n\n${m.sources?.length ? `*Sources: ${m.sources.join(', ')}*\n\n` : ''}`).join('---\n\n');
-    const blob = new Blob([`# PlacementPrep AI - Chat History\n*Exported on ${new Date().toLocaleString()}*\n\n---\n\n${content}`], { type: 'text/markdown' });
+    const content = exportable.map(m => `### ${m.role === 'user' ? '👤 You' : '🤖 Placement-Prep'} (${m.timestamp})\n\n${m.content}\n\n${m.sources?.length ? `*Sources: ${m.sources.join(', ')}*\n\n` : ''}`).join('---\n\n');
+    const blob = new Blob([`# Placement-Prep - Chat History\n*Exported on ${new Date().toLocaleString()}*\n\n---\n\n${content}`], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -628,7 +628,10 @@ function PlacementWorkspace({ user, login, logout }: ReturnType<typeof useAuth>)
     return <DashboardPages
       section={activeSection}
       onSectionChange={setActiveSection}
-      onOpenAssistant={() => setActiveSection('assistant')}
+      onOpenAssistant={(prompt?: string) => {
+        setActiveSection('assistant');
+        if (prompt) setInput(prompt);
+      }}
       user={user}
       login={login}
       logout={logout}
@@ -825,7 +828,7 @@ function PlacementWorkspace({ user, login, logout }: ReturnType<typeof useAuth>)
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-themeTextPrimary m-0 leading-tight">PlacementPrep AI</h1>
+                <h1 className="text-base font-bold text-themeTextPrimary m-0 leading-tight">Placement-Prep</h1>
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
