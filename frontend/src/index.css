@@ -6,13 +6,13 @@
 
 :root {
   /* Default Theme: Clean White + Soft Rose */
-  --color-bg: #FFFFFF;
-  --color-sidebar: #FAFAFC;
+  --color-bg: #F8FAFC;
+  --color-sidebar: #FFFFFF;
   --color-card: #FFFFFF;
-  --color-border: #F1F5F9;
+  --color-border: #E2E8F0;
   --color-bubble-ai: #FFF1F2;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
+  --color-text-primary: #0F172A; /* Slate 900 */
+  --color-text-secondary: #334155; /* Slate 700 - high contrast readability */
   --color-accent: #E11D48; /* Modern Rose 600 */
   --color-accent-hover: #BE123C;
   --color-accent-light: rgba(225, 29, 72, 0.08);
@@ -21,13 +21,13 @@
 
 /* 🌸 White + Rose / Blush Theme */
 body.theme-rose {
-  --color-bg: #FFFFFF;
-  --color-sidebar: #FFFBFB;
+  --color-bg: #FFFBFB;
+  --color-sidebar: #FFFFFF;
   --color-card: #FFFFFF;
-  --color-border: #FEE2E2;
+  --color-border: #FECDD3; /* Soft Rose border */
   --color-bubble-ai: #FFF1F2;
   --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
+  --color-text-secondary: #334155;
   --color-accent: #E11D48; 
   --color-accent-hover: #BE123C;
   --color-accent-light: rgba(225, 29, 72, 0.08);
@@ -36,13 +36,13 @@ body.theme-rose {
 
 /* 🌿 White + Mint / Light Green Theme */
 body.theme-mint {
-  --color-bg: #FFFFFF;
-  --color-sidebar: #FBFCFA;
+  --color-bg: #F8FAF8;
+  --color-sidebar: #FFFFFF;
   --color-card: #FFFFFF;
-  --color-border: #E2E8F0;
+  --color-border: #BBF7D0; /* Soft Emerald border */
   --color-bubble-ai: #F0FDF4;
   --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
+  --color-text-secondary: #334155;
   --color-accent: #059669; /* Emerald 600 */
   --color-accent-hover: #047857;
   --color-accent-light: rgba(5, 150, 105, 0.08);
@@ -51,13 +51,13 @@ body.theme-mint {
 
 /* 🌊 White + Sky / Light Blue Theme */
 body.theme-sky {
-  --color-bg: #FFFFFF;
-  --color-sidebar: #FAFCFE;
+  --color-bg: #F8FAFC;
+  --color-sidebar: #FFFFFF;
   --color-card: #FFFFFF;
-  --color-border: #E2E8F0;
+  --color-border: #BAE6FD; /* Soft Sky border */
   --color-bubble-ai: #F0F9FF;
   --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
+  --color-text-secondary: #334155;
   --color-accent: #0284C7; /* Sky 600 */
   --color-accent-hover: #0369A1;
   --color-accent-light: rgba(2, 132, 199, 0.08);

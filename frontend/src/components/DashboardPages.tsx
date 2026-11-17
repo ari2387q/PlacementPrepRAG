@@ -83,6 +83,8 @@ interface Props {
   logout: () => void;
   showLogin: boolean;
   setShowLogin: (show: boolean) => void;
+  theme?: string;
+  setTheme?: (theme: 'rose' | 'mint' | 'sky') => void;
 }
 
 // ── Curated Resources (17 trusted placement & tech websites) ──────────────────
@@ -242,7 +244,9 @@ export function DashboardPages({
   login,
   logout,
   showLogin,
-  setShowLogin
+  setShowLogin,
+  theme,
+  setTheme
 }: Props) {
   const [github, setGithub] = useState<GitHubData | null>(null);
   const [leetcode, setLeetcode] = useState<LCStats | null>(null);
@@ -592,9 +596,9 @@ export function DashboardPages({
   }, [github?.activity_weeks, dailySolves]);
 
   // Clean, modern light card styling
-  const card = 'rounded-3xl border border-themeBorder bg-white/85 dark:bg-slate-900/85 backdrop-blur-md p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] transition-all duration-300 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)]';
+  const card = 'rounded-3xl border border-themeBorder bg-white p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] transition-all duration-300 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)]';
   const actionBtn = 'inline-flex items-center gap-2 rounded-xl bg-themeAccent px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 active:scale-95 transition-all';
-  const secondaryBtn = 'inline-flex items-center gap-2 rounded-xl border border-themeBorder bg-themeCard/60 px-4 py-2.5 text-sm font-medium hover:border-themeAccent/40 hover:bg-themeCard active:scale-95 transition-all';
+  const secondaryBtn = 'inline-flex items-center gap-2 rounded-xl border border-themeBorder bg-slate-50 px-4 py-2.5 text-sm font-medium hover:border-themeAccent/40 hover:bg-white active:scale-95 transition-all';
 
   // Navigation Items
   const navItems = [
@@ -618,7 +622,7 @@ export function DashboardPages({
       />
 
       {/* Top Application Bar */}
-      <header className="sticky top-0 z-30 border-b border-themeBorder bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4">
+      <header className="sticky top-0 z-30 border-b border-themeBorder bg-white/95 backdrop-blur-md px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-themeAccent/15 text-themeAccent font-black text-xl">
@@ -630,8 +634,32 @@ export function DashboardPages({
             </div>
           </div>
 
-          {/* Quick Action: Jump to AI Agent */}
-          <div className="flex items-center gap-2.5">
+          {/* Quick Action: Jump to AI Agent and Theme Picker */}
+          <div className="flex items-center gap-2.5 flex-wrap justify-end">
+            {setTheme && (
+              <div className="flex items-center gap-1 bg-slate-100/80 border border-themeBorder/80 rounded-full p-1 shadow-xs">
+                {([
+                  { id: 'rose' as const, label: 'Rose', icon: '🌸' },
+                  { id: 'mint' as const, label: 'Mint', icon: '🌿' },
+                  { id: 'sky' as const, label: 'Sky', icon: '🌊' },
+                ]).map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTheme(t.id)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                      theme === t.id
+                        ? 'bg-themeAccent text-white shadow-xs'
+                        : 'text-themeTextSecondary hover:text-themeTextPrimary hover:bg-white'
+                    }`}
+                    title={`Switch to ${t.label} theme`}
+                  >
+                    <span className="text-xs">{t.icon}</span>
+                    <span className="hidden sm:inline text-[11px]">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <button
               onClick={() => onOpenAssistant()}
               className="inline-flex items-center gap-2 rounded-2xl bg-themeAccent/10 border border-themeAccent/20 px-4 py-2 text-xs font-semibold text-themeAccent hover:bg-themeAccent hover:text-white transition-all shadow-sm"
@@ -866,7 +894,7 @@ export function DashboardPages({
                         Open Profile <ExternalLink size={14} />
                       </a>
                       <button
-                        className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 text-red-600 px-3.5 py-2 text-xs font-semibold hover:bg-red-100 transition-all"
+                        className="rounded-xl border border-red-200 bg-red-50 text-red-600 px-3.5 py-2 text-xs font-semibold hover:bg-red-100 transition-all"
                         disabled={busy}
                         onClick={disconnectGitHub}
                       >
@@ -1121,21 +1149,21 @@ export function DashboardPages({
                   {(Number(counts.easy) || 0) + (Number(counts.medium) || 0) + (Number(counts.hard) || 0)}
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-4">
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20 p-2.5">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-2.5">
                     <span className="text-[10px] font-bold text-emerald-600 uppercase">Easy</span>
-                    <b className="block text-lg font-extrabold text-emerald-700 dark:text-emerald-400">
+                    <b className="block text-lg font-extrabold text-emerald-700">
                       {counts.easy}
                     </b>
                   </div>
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 p-2.5">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-2.5">
                     <span className="text-[10px] font-bold text-amber-600 uppercase">Medium</span>
-                    <b className="block text-lg font-extrabold text-amber-700 dark:text-amber-400">
+                    <b className="block text-lg font-extrabold text-amber-700">
                       {counts.medium}
                     </b>
                   </div>
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50/60 dark:bg-rose-950/20 p-2.5">
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-2.5">
                     <span className="text-[10px] font-bold text-rose-600 uppercase">Hard</span>
-                    <b className="block text-lg font-extrabold text-rose-700 dark:text-rose-400">
+                    <b className="block text-lg font-extrabold text-rose-700">
                       {counts.hard}
                     </b>
                   </div>
@@ -1212,7 +1240,7 @@ export function DashboardPages({
                       </button>
                       <button
                         onClick={() => removeTopic(topic)}
-                        className="h-7 w-7 rounded-lg text-themeTextSecondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center justify-center transition-all ml-1"
+                        className="h-7 w-7 rounded-lg text-themeTextSecondary hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all ml-1"
                         title="Remove topic"
                       >
                         ✕
@@ -1473,7 +1501,7 @@ export function DashboardPages({
                     <button
                       onClick={() => setEmailSyncEnabled(!emailSyncEnabled)}
                       className={`h-6 w-11 rounded-full p-0.5 transition-colors ${
-                        emailSyncEnabled ? 'bg-themeAccent' : 'bg-slate-300 dark:bg-slate-700'
+                        emailSyncEnabled ? 'bg-themeAccent' : 'bg-slate-300'
                       }`}
                     >
                       <div

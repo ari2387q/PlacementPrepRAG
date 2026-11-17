@@ -637,6 +637,8 @@ function PlacementWorkspace({ user, login, logout }: ReturnType<typeof useAuth>)
       logout={logout}
       showLogin={showAuthModal}
       setShowLogin={setShowAuthModal}
+      theme={theme}
+      setTheme={setTheme}
     />;
   }
 
