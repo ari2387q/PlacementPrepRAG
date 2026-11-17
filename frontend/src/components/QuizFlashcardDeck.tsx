@@ -124,51 +124,51 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-themeCard border border-themeAccent/30 shadow-2xl flex flex-col backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white border border-slate-200 shadow-2xl flex flex-col">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-5 py-3.5 bg-themeSidebar border-b border-themeBorder/80">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-themeAccent/20 border border-themeAccent/40 flex items-center justify-center text-themeAccent">
-            <Sparkles className="w-4 h-4" />
+      <div className="flex items-center justify-between px-6 py-4 bg-slate-50/90 border-b border-slate-200 rounded-t-3xl">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-themeAccent/15 border border-themeAccent/30 flex items-center justify-center text-themeAccent">
+            <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-themeTextPrimary m-0 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
               <span>Interactive Quiz & Flashcard Deck</span>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-themeAccent/15 text-themeAccent border border-themeAccent/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-themeAccent/15 text-themeAccent border border-themeAccent/30 truncate max-w-[200px]">
                 {filename}
               </span>
             </h3>
-            <p className="text-[10px] text-themeTextSecondary m-0">Test your knowledge on uploaded material</p>
+            <p className="text-xs text-slate-600 m-0">Test your knowledge on uploaded material</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Mode Switcher Buttons */}
-          <div className="flex items-center bg-themeBg border border-themeBorder/60 rounded-lg p-0.5">
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-xs">
             <button
               onClick={() => { setMode('quiz'); setIsFlipped(false); }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                mode === 'quiz' ? 'bg-themeAccent text-white shadow' : 'text-themeTextSecondary hover:text-themeTextPrimary'
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                mode === 'quiz' ? 'bg-themeAccent text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <HelpCircle className="w-3 h-3" />
+              <HelpCircle className="w-3.5 h-3.5" />
               Quiz
             </button>
             <button
               onClick={() => { setMode('flashcard'); setIsFlipped(false); }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                mode === 'flashcard' ? 'bg-themeAccent text-white shadow' : 'text-themeTextSecondary hover:text-themeTextPrimary'
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                mode === 'flashcard' ? 'bg-themeAccent text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Layers className="w-3 h-3" />
+              <Layers className="w-3.5 h-3.5" />
               Flashcard
             </button>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-themeTextSecondary hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+            className="p-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
             title="Close quiz panel"
           >
             <X className="w-4 h-4" />
@@ -177,22 +177,22 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
       </div>
 
       {/* Main Deck Container */}
-      <div className="p-5">
+      <div className="p-6 space-y-5">
         {/* Loading / Error Banner */}
         {isLoading && (
-          <div className="mb-4 rounded-2xl border border-themeAccent/30 bg-themeBg/80 px-4 py-3 text-xs font-semibold text-themeAccent">
+          <div className="rounded-2xl border border-themeAccent/30 bg-themeAccent/10 px-4 py-3 text-xs font-semibold text-themeAccent">
             Generating quiz items from your uploaded document...
           </div>
         )}
 
         {errorMessage && (
-          <div className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-300">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800">
             <div className="flex items-center justify-between gap-4">
               <span>{errorMessage}</span>
               {onRetry && (
                 <button
                   onClick={onRetry}
-                  className="text-[10px] font-bold uppercase tracking-widest text-themeAccent hover:text-themeAccentHover"
+                  className="text-xs font-bold uppercase tracking-wider text-themeAccent hover:underline"
                 >
                   Retry
                 </button>
@@ -201,18 +201,18 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-4 text-xs font-semibold text-themeTextSecondary">
-          <span className="flex items-center gap-1.5 font-mono text-[11px]">
-            <BookOpen className="w-3.5 h-3.5 text-themeAccent" />
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+          <span className="flex items-center gap-1.5 font-mono text-xs">
+            <BookOpen className="w-4 h-4 text-themeAccent" />
             Card {currentIndex + 1} of {quizItems.length}
           </span>
 
-          <span className="px-2.5 py-1 rounded-lg bg-themeBg/60 border border-themeBorder text-themeTextPrimary text-[10px] font-mono">
+          <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-semibold">
             {currentItem.conceptTag}
           </span>
 
           {mode === 'quiz' && (
-            <span className="text-emerald-400 font-bold text-xs">
+            <span className="text-emerald-800 font-bold text-xs bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
               Score: {score} / {Object.keys(answeredMap).length}
             </span>
           )}
@@ -221,7 +221,7 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
         {/* QUIZ MODE */}
         {mode === 'quiz' && (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-themeBg/50 border border-themeBorder/80 text-sm font-medium text-themeTextPrimary leading-relaxed">
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 leading-relaxed shadow-xs">
               {currentItem.question}
             </div>
 
@@ -231,15 +231,15 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
                 const isChosen = answerState?.chosen === idx;
                 const isCorrectOpt = idx === currentItem.correctAnswer;
                 
-                let btnStyle = "bg-themeBg/30 border-themeBorder/60 text-themeTextSecondary hover:border-themeAccent/50 hover:text-themeTextPrimary";
+                let btnStyle = "bg-white border-slate-200 text-slate-800 hover:border-themeAccent hover:bg-slate-50 font-medium shadow-xs";
                 
                 if (answerState !== undefined) {
                   if (isCorrectOpt) {
-                    btnStyle = "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 font-semibold";
+                    btnStyle = "bg-emerald-50 border-2 border-emerald-500 text-emerald-950 font-bold shadow-xs";
                   } else if (isChosen && !answerState.correct) {
-                    btnStyle = "bg-rose-500/15 border-rose-500/50 text-rose-300 font-semibold";
+                    btnStyle = "bg-rose-50 border-2 border-rose-500 text-rose-950 font-bold shadow-xs";
                   } else {
-                    btnStyle = "bg-themeBg/20 border-themeBorder/40 opacity-50";
+                    btnStyle = "bg-slate-50 border-slate-200 text-slate-500 opacity-60";
                   }
                 }
 
@@ -250,15 +250,15 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
                     disabled={answerState !== undefined}
                     className={`w-full text-left px-4 py-3 rounded-xl border text-xs transition-all flex items-start gap-3 ${btnStyle}`}
                   >
-                    <span className="w-5 h-5 rounded-md border border-current/30 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">
+                    <span className="w-5 h-5 rounded-md border border-current/40 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">
                       {String.fromCharCode(65 + idx)}
                     </span>
-                    <span className="flex-1">{opt}</span>
+                    <span className="flex-1 text-xs leading-relaxed">{opt}</span>
                     {answerState !== undefined && isCorrectOpt && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                     )}
                     {answerState !== undefined && isChosen && !answerState.correct && (
-                      <XCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                      <XCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
                     )}
                   </button>
                 );
@@ -267,8 +267,8 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
 
             {/* Explanation card */}
             {answeredMap[currentIndex] !== undefined && (
-              <div className="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-200 animate-fadeIn">
-                <span className="font-bold block mb-1 text-indigo-300">💡 Explanation:</span>
+              <div className="p-4 rounded-2xl bg-purple-50/90 border border-purple-200 text-xs text-purple-950 leading-relaxed shadow-xs">
+                <span className="font-bold block mb-1 text-purple-900">💡 Explanation:</span>
                 {currentItem.explanation}
               </div>
             )}
@@ -279,9 +279,9 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
         {mode === 'flashcard' && (
           <div
             onClick={() => setIsFlipped(!isFlipped)}
-            className="w-full min-h-[180px] p-6 rounded-2xl bg-gradient-to-br from-themeBg/80 to-themeSidebar border border-themeAccent/30 flex flex-col items-center justify-center text-center cursor-pointer shadow-inner transition-transform duration-300 hover:border-themeAccent group relative"
+            className="w-full min-h-[200px] p-8 rounded-3xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center text-center cursor-pointer shadow-xs transition-all duration-300 hover:border-themeAccent group relative"
           >
-            <span className="absolute top-3 right-3 text-[10px] font-mono text-themeTextSecondary flex items-center gap-1 bg-themeBg px-2 py-0.5 rounded border border-themeBorder">
+            <span className="absolute top-3 right-3 text-[10px] font-mono text-slate-600 flex items-center gap-1 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
               <Eye className="w-3 h-3 text-themeAccent" />
               Click card to flip
             </span>
@@ -289,17 +289,17 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
             {!isFlipped ? (
               <div className="space-y-3">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-themeAccent">Question</span>
-                <p className="text-base font-semibold text-themeTextPrimary leading-relaxed max-w-lg">
+                <p className="text-base font-bold text-slate-900 leading-relaxed max-w-lg">
                   {currentItem.question}
                 </p>
               </div>
             ) : (
               <div className="space-y-3 animate-fadeIn">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400">Answer & Key Concept</span>
-                <p className="text-sm font-bold text-emerald-300">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-700">Answer & Key Concept</span>
+                <p className="text-base font-extrabold text-emerald-950">
                   {currentItem.options[currentItem.correctAnswer]}
                 </p>
-                <p className="text-xs text-themeTextSecondary max-w-md pt-2 border-t border-themeBorder/50">
+                <p className="text-xs text-slate-700 max-w-md pt-3 border-t border-slate-200 leading-relaxed">
                   {currentItem.explanation}
                 </p>
               </div>
@@ -308,12 +308,12 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
         )}
 
         {/* Footer Navigation */}
-        <div className="flex items-center justify-between mt-5 pt-3 border-t border-themeBorder/50">
+        <div className="flex items-center justify-between pt-4 border-t border-slate-200">
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeBg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
             Reset Quiz
           </button>
 
@@ -321,14 +321,14 @@ export const QuizFlashcardDeck: React.FC<QuizFlashcardDeckProps> = ({ filename, 
             <button
               onClick={handlePrev}
               disabled={currentIndex === 0}
-              className="p-1.5 rounded-lg border border-themeBorder text-themeTextSecondary disabled:opacity-30 hover:text-themeTextPrimary hover:bg-themeBg transition-colors"
+              className="p-2 rounded-xl border border-slate-200 text-slate-600 disabled:opacity-30 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={handleNext}
               disabled={currentIndex === quizItems.length - 1}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-themeAccent hover:bg-themeAccentHover text-white text-xs font-bold disabled:opacity-30 transition-colors shadow"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-themeAccent hover:bg-themeAccentHover text-white text-xs font-bold disabled:opacity-30 transition-all shadow-sm active:scale-95"
             >
               Next Card
               <ChevronRight className="w-4 h-4" />

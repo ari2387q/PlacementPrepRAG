@@ -83,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         window.google.accounts.id.renderButton(googleBtnRef.current, {
           type: 'standard',
           shape: 'pill',
-          theme: 'filled_black',
+          theme: 'outline',
           size: 'large',
           text: 'signin_with',
           logo_alignment: 'left',
@@ -114,25 +114,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       className="fixed inset-0 z-[998] flex items-center justify-center p-4"
       style={{ animation: 'fadeIn 0.15s ease-out' }}
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
 
       <div
-        className="relative z-10 w-full max-w-sm rounded-2xl border border-themeBorder/60 bg-themeCard/95 backdrop-blur-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="relative z-10 w-full max-w-sm rounded-3xl border border-slate-200 bg-white shadow-2xl flex flex-col overflow-hidden"
         style={{ animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-themeBorder/40">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-themeAccent to-indigo-500 flex items-center justify-center">
-              <Shield className="w-3.5 h-3.5 text-white" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-themeAccent/15 border border-themeAccent/30 flex items-center justify-center text-themeAccent font-bold">
+              <Shield className="w-4 h-4" />
             </div>
-            <span className="text-sm font-bold text-themeTextPrimary">
+            <span className="text-sm font-bold text-slate-900">
               {user ? 'Your Account' : 'Sign In'}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-themeTextSecondary hover:text-themeTextPrimary hover:bg-themeBg/60 transition-colors"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -149,31 +149,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <img
                     src={user.picture}
                     alt={user.name}
-                    className="w-20 h-20 rounded-full border-2 border-themeAccent/40 shadow-lg shadow-themeAccent/10"
+                    className="w-20 h-20 rounded-full border-2 border-themeAccent shadow-md"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-themeAccent/20 border-2 border-themeAccent/40 flex items-center justify-center">
-                    <UserIcon className="w-8 h-8 text-themeAccent" />
+                  <div className="w-20 h-20 rounded-full bg-themeAccent/20 border-2 border-themeAccent/40 flex items-center justify-center text-themeAccent">
+                    <UserIcon className="w-8 h-8" />
                   </div>
                 )}
-                <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-themeCard" />
+                <span className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white" />
               </div>
 
               <div className="text-center space-y-1">
-                <p className="font-bold text-themeTextPrimary text-sm">{user.name}</p>
-                <p className="flex items-center gap-1.5 text-xs text-themeTextSecondary">
-                  <Mail className="w-3 h-3" /> {user.email}
+                <p className="font-bold text-slate-900 text-sm">{user.name}</p>
+                <p className="flex items-center justify-center gap-1.5 text-xs text-slate-600">
+                  <Mail className="w-3.5 h-3.5" /> {user.email}
                 </p>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] text-emerald-400 font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-bold mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                   Signed in with Google
                 </span>
               </div>
 
               <button
                 onClick={() => { onLogout(); onClose(); }}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold transition-all shadow-2xs"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Sign Out
@@ -183,33 +183,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             /* Login state */
             <>
               <div className="text-center space-y-1.5">
-                <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-themeAccent/20 to-indigo-500/20 border border-themeAccent/30 flex items-center justify-center mb-3">
-                  <LogIn className="w-5 h-5 text-themeAccent" />
+                <div className="w-12 h-12 mx-auto rounded-2xl bg-themeAccent/15 border border-themeAccent/30 flex items-center justify-center mb-3 text-themeAccent">
+                  <LogIn className="w-6 h-6" />
                 </div>
-                <h3 className="text-sm font-bold text-themeTextPrimary m-0">Sign in to PlacementPrep AI</h3>
-                <p className="text-xs text-themeTextSecondary leading-relaxed">
-                  Your chat history and preferences will be saved across devices.
+                <h3 className="text-sm font-bold text-slate-900 m-0">Sign in to Placement-Prep</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Your chat history and preparation progress will sync securely across your devices.
                 </p>
               </div>
 
               {clientId ? (
                 <div ref={googleBtnRef} className="flex justify-center" />
               ) : (
-                <div className="w-full px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 text-center leading-relaxed">
+                <div className="w-full px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 text-center leading-relaxed font-medium">
                   ⚙️ Google OAuth is not configured yet.<br />
-                  Please set <code className="font-mono text-amber-200">VITE_GOOGLE_CLIENT_ID</code> in your <code className="font-mono text-amber-200">.env.local</code> file.
+                  Please set <code className="font-mono text-amber-950 font-bold">VITE_GOOGLE_CLIENT_ID</code> in your <code className="font-mono text-amber-950 font-bold">.env.local</code> file.
                 </div>
               )}
 
               {authError && (
-                <div role="alert" className="w-full px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 text-center">
+                <div role="alert" className="w-full px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 text-center font-semibold">
                   {authError}
                 </div>
               )}
 
-              <p className="text-[10px] text-themeTextSecondary text-center leading-relaxed">
+              <p className="text-[11px] text-slate-500 text-center leading-relaxed">
                 By signing in you agree to Google's Terms of Service.<br />
-                We only store your name, email, and profile picture.
+                We only store your name, email, and avatar.
               </p>
             </>
           )}
