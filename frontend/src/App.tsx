@@ -32,6 +32,7 @@ import { QuoteTooltip } from './components/QuoteTooltip';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { HelpModal } from './components/HelpModal';
 import { AuthModal } from './components/AuthModal';
+import { LandingPage } from './components/LandingPage';
 import { useAuth } from './hooks/useAuth';
 import { DashboardPages, type DashboardSection } from './components/DashboardPages';
 
@@ -64,8 +65,44 @@ const welcomeMessage = (): Message => ({
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 });
 
+const ENTERED_KEY = 'placement_prep_entered';
+
 function App() {
   const auth = useAuth();
+
+  // Handle GitHub OAuth popup callback — detect ?github_oauth=status=... and notify opener
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const githubOAuth = params.get('github_oauth');
+    if (githubOAuth && window.opener) {
+      const status = new URLSearchParams(githubOAuth).get('status') ?? githubOAuth;
+      window.opener.postMessage(
+        { type: 'github-oauth-complete', status: status === 'connected' ? 'success' : status },
+        window.location.origin
+      );
+      window.close();
+      return;
+    }
+  }, []);
+
+  const [entered, setEntered] = React.useState(() => {
+    return !!auth.user || localStorage.getItem(ENTERED_KEY) === 'true';
+  });
+
+  function handleEnter() {
+    localStorage.setItem(ENTERED_KEY, 'true');
+    setEntered(true);
+  }
+
+  function handleLogin(user: Parameters<typeof auth.login>[0]) {
+    auth.login(user);
+    setEntered(true);
+  }
+
+  if (!entered) {
+    return <LandingPage onEnter={handleEnter} onLogin={handleLogin} />;
+  }
+
   const workspaceKey = auth.user ? `${auth.user.sub}:${auth.user.token}` : 'anonymous';
   return <PlacementWorkspace key={workspaceKey} {...auth} />;
 }

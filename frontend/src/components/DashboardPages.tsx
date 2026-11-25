@@ -367,8 +367,8 @@ export function DashboardPages({
     try {
       const response = await fetch(`${API}/integrations/github/connect`, { method: 'POST', headers });
       const data = await response.json();
-      if (!response.ok || !data.auth_url) throw new Error(data.detail || 'Failed to start GitHub authorization');
-      if (popup) popup.location.href = data.auth_url;
+      if (!response.ok || !data.authorization_url) throw new Error(data.detail || 'Failed to start GitHub authorization');
+      if (popup) popup.location.href = data.authorization_url;
     } catch (e: any) {
       popup?.close();
       setNotice(e.message || 'Could not open GitHub authorization window');
