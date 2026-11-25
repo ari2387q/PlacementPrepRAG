@@ -672,6 +672,7 @@ function PlacementWorkspace({ user, login, logout, onBackToLanding }: ReturnType
         setActiveSection('assistant');
         if (prompt) setInput(prompt);
       }}
+      onBackToLanding={onBackToLanding}
       user={user}
       login={login}
       logout={logout}

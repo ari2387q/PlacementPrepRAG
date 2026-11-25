@@ -78,6 +78,7 @@ interface Props {
   section: DashboardSection;
   onSectionChange: (section: DashboardSection) => void;
   onOpenAssistant: (prompt?: string) => void;
+  onBackToLanding?: () => void;
   user: GoogleUser | null;
   login: (user: GoogleUser) => void;
   logout: () => void;
@@ -240,6 +241,7 @@ export function DashboardPages({
   section,
   onSectionChange,
   onOpenAssistant,
+  onBackToLanding,
   user,
   login,
   logout,
@@ -624,12 +626,16 @@ export function DashboardPages({
       {/* Top Application Bar */}
       <header className="sticky top-0 z-30 border-b border-themeBorder bg-white/95 backdrop-blur-md px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-themeAccent/15 text-themeAccent font-black text-xl">
+          <div 
+            className={`flex items-center gap-3 ${onBackToLanding ? 'cursor-pointer group' : ''}`}
+            onClick={onBackToLanding}
+            title={onBackToLanding ? "Return to Landing Page" : undefined}
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-themeAccent/15 text-themeAccent font-black text-xl transition-transform group-hover:scale-105">
               P
             </div>
             <div>
-              <h1 className="text-lg font-bold leading-none tracking-tight">Placement-Prep</h1>
+              <h1 className="text-lg font-bold leading-none tracking-tight group-hover:text-themeAccent transition-colors">Placement-Prep</h1>
               <p className="text-xs text-themeTextSecondary mt-0.5">Campus Placement & Engineering Readiness</p>
             </div>
           </div>
