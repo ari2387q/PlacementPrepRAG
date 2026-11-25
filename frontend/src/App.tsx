@@ -104,7 +104,10 @@ function App() {
   }
 
   const workspaceKey = auth.user ? `${auth.user.sub}:${auth.user.token}` : 'anonymous';
-  return <PlacementWorkspace key={workspaceKey} {...auth} />;
+  return <PlacementWorkspace key={workspaceKey} {...auth} onBackToLanding={() => {
+    localStorage.removeItem(ENTERED_KEY);
+    setEntered(false);
+  }} />;
 }
 
 function loadStoredMessages(accountKey: string): Message[] {
@@ -121,7 +124,7 @@ function loadStoredMessages(accountKey: string): Message[] {
   }
 }
 
-function PlacementWorkspace({ user, login, logout }: ReturnType<typeof useAuth>) {
+function PlacementWorkspace({ user, login, logout, onBackToLanding }: ReturnType<typeof useAuth> & { onBackToLanding: () => void }) {
   const accountKey = user?.sub ?? 'anonymous';
   const [historyReadyFor, setHistoryReadyFor] = useState<string | null>(user ? null : 'anonymous');
   const [messages, setMessages] = useState<Message[]>(() => loadStoredMessages(accountKey));
@@ -867,7 +870,11 @@ function PlacementWorkspace({ user, login, logout }: ReturnType<typeof useAuth>)
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-themeTextPrimary m-0 leading-tight">Placement-Prep</h1>
+                <h1
+                  className="text-base font-bold text-themeTextPrimary m-0 leading-tight cursor-pointer hover:text-themeAccent transition-colors"
+                  onClick={onBackToLanding}
+                  title="Back to home"
+                >Placement-Prep</h1>
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>

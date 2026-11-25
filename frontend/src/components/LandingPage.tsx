@@ -30,30 +30,45 @@ const FEATURES = [
   },
 ];
 
+const RAG_STEPS = [
+  { step: '01', title: 'You ask a question', desc: 'Natural language — no need to know keywords or search tricks.' },
+  { step: '02', title: 'Vector search', desc: 'Pinecone finds the most relevant chunks from your study material instantly.' },
+  { step: '03', title: 'LLM synthesis', desc: 'Groq + LLaMA 3.3 70B composes a precise, grounded answer — no hallucinations.' },
+  { step: '04', title: 'Sources shown', desc: 'Every answer cites its sources so you know exactly where it came from.' },
+];
+
 const TOPICS = ['DSA', 'System Design', 'OS', 'DBMS', 'OOPs', 'CN', 'Behavioural', 'SQL'];
+
+const STATS = [
+  { value: '70B', label: 'Parameter LLM' },
+  { value: '<1s', label: 'Response time' },
+  { value: '∞', label: 'Topics covered' },
+];
 
 export function LandingPage({ onEnter, onLogin }: LandingPageProps) {
   const [authOpen, setAuthOpen] = useState(false);
   const [visible, setVisible] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
+  const ragRef = useRef<HTMLDivElement>(null);
   const [featuresVisible, setFeaturesVisible] = useState(false);
+  const [ragVisible, setRagVisible] = useState(false);
 
   useEffect(() => {
-    // Trigger hero fade-in
     const t = setTimeout(() => setVisible(true), 80);
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    const el = featuresRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setFeaturesVisible(true); },
-      { threshold: 0.15 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    const observe = (ref: React.RefObject<HTMLDivElement | null>, setter: (v: boolean) => void) => {
+      const el = ref.current;
+      if (!el) return () => {};
+      const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setter(true); }, { threshold: 0.1 });
+      obs.observe(el);
+      return () => obs.disconnect();
+    };
+    const c1 = observe(featuresRef, setFeaturesVisible);
+    const c2 = observe(ragRef, setRagVisible);
+    return () => { c1(); c2(); };
   }, []);
 
   function handleLogin(user: GoogleUser) {
@@ -85,12 +100,10 @@ export function LandingPage({ onEnter, onLogin }: LandingPageProps) {
 
       {/* ── Hero ── */}
       <section
-        ref={heroRef}
         className={`relative flex flex-col items-center justify-center min-h-screen px-6 pt-20 pb-16 text-center transition-all duration-700 ease-out ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
         }`}
       >
-        {/* Background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-32 -left-32 w-[480px] h-[480px] bg-rose-100 rounded-full blur-3xl opacity-50 animate-[blob_8s_ease-in-out_infinite]" />
           <div className="absolute top-20 -right-20 w-[380px] h-[380px] bg-orange-100 rounded-full blur-3xl opacity-40 animate-[blob_10s_ease-in-out_infinite_2s]" />
@@ -99,7 +112,7 @@ export function LandingPage({ onEnter, onLogin }: LandingPageProps) {
 
         <div className="relative z-10 max-w-3xl mx-auto">
           <span className="inline-block text-xs font-semibold tracking-widest text-rose-500 uppercase mb-5 px-3 py-1 bg-rose-50 rounded-full border border-rose-100">
-            AI-Powered · RAG · Free
+            Groq · LLaMA 3.3 70B · Pinecone RAG
           </span>
 
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight text-gray-900 mb-6">
@@ -110,6 +123,16 @@ export function LandingPage({ onEnter, onLogin }: LandingPageProps) {
           <p className="text-lg md:text-xl text-gray-500 leading-relaxed mb-10 max-w-2xl mx-auto">
             Your AI prep buddy for DSA, System Design, OS, DBMS and more — with document uploads, quizzes, and flashcards. All in one place.
           </p>
+
+          {/* Stats */}
+          <div className="flex justify-center gap-8 mb-10">
+            {STATS.map(s => (
+              <div key={s.label} className="text-center">
+                <div className="text-2xl font-extrabold text-rose-500">{s.value}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{s.label}</div>
+              </div>
+            ))}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
@@ -126,8 +149,7 @@ export function LandingPage({ onEnter, onLogin }: LandingPageProps) {
             </button>
           </div>
 
-          {/* Topic pills */}
-          <div className="mt-12 flex flex-wrap justify-center gap-2">
+          <div className="mt-10 flex flex-wrap justify-center gap-2">
             {TOPICS.map((t, i) => (
               <span
                 key={t}
@@ -140,10 +162,47 @@ export function LandingPage({ onEnter, onLogin }: LandingPageProps) {
           </div>
         </div>
 
-        {/* Scroll cue */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-gray-300 animate-bounce">
           <div className="w-5 h-8 rounded-full border-2 border-gray-200 flex items-start justify-center pt-1.5">
             <div className="w-1 h-2 bg-gray-300 rounded-full" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── How the RAG Engine works ── */}
+      <section ref={ragRef} className="py-24 px-6 bg-gray-950 text-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="text-xs font-semibold tracking-widest text-rose-400 uppercase px-3 py-1 bg-rose-500/10 rounded-full border border-rose-500/20">
+              Under the hood
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold mt-4 mb-3">How the RAG engine works</h2>
+            <p className="text-gray-400 text-base max-w-xl mx-auto">Not just another chatbot. Every answer is retrieved, grounded, and cited.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {RAG_STEPS.map((s, i) => (
+              <div
+                key={s.step}
+                style={{ transitionDelay: `${i * 100}ms` }}
+                className={`bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 transition-all duration-500 ${
+                  ragVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+                }`}
+              >
+                <div className="text-rose-400 text-xs font-bold tracking-widest mb-3">{s.step}</div>
+                <h3 className="text-base font-semibold text-white mb-1">{s.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Tech stack strip */}
+          <div className="mt-12 flex flex-wrap justify-center gap-3">
+            {['Pinecone Vector DB', 'Groq Inference', 'LLaMA 3.3 70B', 'FastAPI', 'MongoDB', 'React + Vite'].map(tech => (
+              <span key={tech} className="text-xs font-medium px-3 py-1.5 bg-white/5 border border-white/10 text-gray-300 rounded-full">
+                {tech}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -174,17 +233,25 @@ export function LandingPage({ onEnter, onLogin }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-24 px-6 text-center">
+      {/* ── Final CTA ── */}
+      <section className="py-20 px-6 bg-gradient-to-br from-rose-500 to-orange-400 text-white text-center">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Ready to start?</h2>
-          <p className="text-gray-400 mb-8">Free forever for core features. No credit card.</p>
-          <button
-            onClick={onEnter}
-            className="px-10 py-4 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-full text-base shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
-          >
-            Open the app →
-          </button>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Your next offer starts here.</h2>
+          <p className="text-white/80 mb-8 text-base">Free forever for core features. No credit card needed.</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={onEnter}
+              className="px-8 py-3.5 bg-white text-rose-500 font-semibold rounded-full text-base shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+            >
+              Launch the app →
+            </button>
+            <button
+              onClick={() => setAuthOpen(true)}
+              className="px-8 py-3.5 border border-white/40 text-white font-semibold rounded-full text-base transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10"
+            >
+              Sign in with Google
+            </button>
+          </div>
         </div>
       </section>
 
